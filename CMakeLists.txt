@@ -30,11 +30,20 @@ add_library(SynthQ
         src/ucrzNode.cpp
         include/ucrzNode.h
         src/nodeVisitor.cpp
-        include/nodeVisitor.h)
+        include/nodeVisitor.h
+        src/qsd.cpp
+        include/qsd.h
+        csd/csd.cpp
+        csd/csd.h
+        src/csdNode.cpp
+        include/csdNode.h)
+
+target_link_libraries(SynthQ -llapacke)
 
 add_executable(Test
         test/test_one_qubit.cpp
-        test/test_mcgates.cpp)
+        test/test_mcgates.cpp
+        test/test_qsd.cpp)
 
 target_link_libraries(
         Test
