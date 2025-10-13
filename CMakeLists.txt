@@ -31,12 +31,14 @@ add_library(SynthQ
         include/ucrzNode.h
         src/nodeVisitor.cpp
         include/nodeVisitor.h
-        src/qsd.cpp
-        include/qsd.h
+        src/qsdNode.cpp
+        include/qsdNode.h
         csd/csd.cpp
         csd/csd.h
         src/csdNode.cpp
-        include/csdNode.h)
+        include/csdNode.h
+        src/IASTnode.cpp
+        include/IASTnode.h)
 
 target_link_libraries(SynthQ -llapacke)
 

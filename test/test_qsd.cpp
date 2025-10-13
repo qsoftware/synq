@@ -3,7 +3,7 @@
 //
 #include <gtest/gtest.h>
 #include <Eigen/Dense>
-#include "../include/qsd.h"
+#include "../csd/csd.h"
 #include<complex.h>
 
 
