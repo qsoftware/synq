@@ -2,8 +2,8 @@
 // Created by adenilton on 10/11/25.
 //
 
-#include "../include/qsd.h"
+#include "../include/qsdNode.h"
 
-qsd::qsd(Eigen::MatrixXcf first_unitary, Eigen::MatrixXcf second_unitary) {
+qsdNode::qsdNode(Eigen::MatrixXcf first_unitary, Eigen::MatrixXcf second_unitary) {
 
 }
