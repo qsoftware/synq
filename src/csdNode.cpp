@@ -22,7 +22,7 @@ csdNode::csdNode(Eigen::MatrixXcf unitary) {
     auto csd_result = csd(unitary, p, p);
 
     // TODO: implementar mcry
-    mcry = std::make_unique<firstUcrzNode>(&(csd_result.theta));
+    mcry = std::make_unique<firstUcrNode>(&(csd_result.theta), ucrType::Y);
 
     // TODO implementar qsdNode
     first_ucg1control = std::make_unique<qsdNode>(csd_result.U1, csd_result.U2);

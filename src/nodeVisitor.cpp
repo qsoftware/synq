@@ -20,7 +20,14 @@ void qasmVisitor::visit(rzNode &node)
     // qasm_code += "rz(" + std::visit(return_type_visitor{}, node.get_data()) + ") q[0];\n";
 }
 
-void qasmVisitor::visit(firstUcrzNode &node) {
+void qasmVisitor::visit(ryNode &node)
+{
+    int target = _num_qubits - 1;
+    qasm_code += "ry(" + std::visit(return_type_visitor{}, node.get_data()) + ") q[" + std::to_string(target) + "];\n";
+    // qasm_code += "rz(" + std::visit(return_type_visitor{}, node.get_data()) + ") q[0];\n";
+}
+
+void qasmVisitor::visit(firstUcrNode &node) {
     int target = _num_qubits - 1;
     // int control = _num_qubits - node.get_num_qubits();
     int control = target - node.get_num_qubits() + 1;
@@ -35,7 +42,7 @@ void qasmVisitor::visit(firstUcrzNode &node) {
 }
 
 
-void qasmVisitor::visit(ucrzNode &node) {
+void qasmVisitor::visit(ucrNode &node) {
     int target = _num_qubits - 1;
     // int control = _num_qubits - node.get_num_qubits();
     int control = target - node.get_num_qubits() + 1;

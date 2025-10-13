@@ -4,15 +4,16 @@
 
 #pragma once
 
-#include "ucrzNode.h"
+#include "ucrNode.h"
 
 
 class nodeVisitor {
 public:
     virtual ~nodeVisitor() = default;
     virtual void visit(rzNode &node) = 0;
-    virtual void visit(ucrzNode &node) = 0;
-    virtual void visit(firstUcrzNode &node) = 0;
+    virtual void visit(ryNode &node) = 0;
+    virtual void visit(ucrNode &node) = 0;
+    virtual void visit(firstUcrNode &node) = 0;
 };
 
 struct return_type_visitor {
@@ -30,6 +31,7 @@ public:
     int _num_qubits;
     explicit qasmVisitor(int num_qubits);
     void visit(rzNode &node) override;
-    void visit(firstUcrzNode &node) override;
-    void visit(ucrzNode &node) override;
+    void visit(ryNode &node) override;
+    void visit(firstUcrNode &node) override;
+    void visit(ucrNode &node) override;
 };

@@ -3,7 +3,7 @@
 //
 
 #include<iostream>
-#include "../include/ucrzNode.h"
+#include "../include/ucrNode.h"
 #include "../include/nodeVisitor.h"
 using namespace std;
 #include <gtest/gtest.h>
@@ -15,7 +15,7 @@ TEST(MultiControlledRotations, OneControlUCRZ) {
     vector<double> angles;
     angles.push_back(0.3);
     angles.push_back(0.2);
-    auto a = firstUcrzNode(&angles);
+    auto a = firstUcrNode(&angles, ucrType::Z);
     a.accept(visitor);
     cout << visitor.qasm_code;
 
@@ -29,7 +29,7 @@ TEST(MultiControlledRotations, TwoControlUCRZ) {
     auto visitor = qasmVisitor(3);
     vector angles = {0.2, 0.1, 0.3, 0.4};
 
-    auto a = firstUcrzNode(&angles);
+    auto a = firstUcrNode(&angles, ucrType::Z);
     a.accept(visitor);
     cout << visitor.qasm_code;
 
@@ -40,11 +40,11 @@ TEST(MultiControlledRotations, TwoControlUCRZ) {
 
 TEST(MultiControlledRotations, ThreeControlUCRZ) {
     // Expect two strings not to be equal.
-    ucrzNode::index = 0;
+    ucrNode::index = 0;
     auto visitor = qasmVisitor(4);
     vector angles = {0.11, 0.22, 0.33, 0.44, 0.51, 0.678, 0.712, 0.821};
 
-    auto a = firstUcrzNode(&angles);
+    auto a = firstUcrNode(&angles, ucrType::Z);
     a.accept(visitor);
     cout << visitor.qasm_code;
 

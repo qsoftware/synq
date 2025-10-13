@@ -27,8 +27,8 @@ add_library(SynthQ
         include/unitary.h
         src/ctrl_qubit_gate.cpp
         include/ctrl_qubit_gate.h
-        src/ucrzNode.cpp
-        include/ucrzNode.h
+        src/ucrNode.cpp
+        include/ucrNode.h
         src/nodeVisitor.cpp
         include/nodeVisitor.h
         src/qsdNode.cpp
