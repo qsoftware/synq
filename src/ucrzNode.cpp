@@ -49,9 +49,7 @@ void firstUcrzNode::accept(nodeVisitor &visitor) {
     visitor.visit(*this);
 }
 
-int IASTnode::get_num_qubits() {
-    return num_qubits;
-}
+
 
 rzNode::rzNode(const double theta) {
     num_qubits = 1;
