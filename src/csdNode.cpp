@@ -21,12 +21,16 @@ csdNode::csdNode(Eigen::MatrixXcf unitary) {
     int p = rows / 2;
     auto csd_result = csd(unitary, p, p);
 
-    // TODO: implementar mcry
     mcry = std::make_unique<firstUcrNode>(&(csd_result.theta), ucrType::Y);
-
-    // TODO implementar qsdNode
     first_ucg1control = std::make_unique<qsdNode>(csd_result.U1, csd_result.U2);
     second_ucg1control = std::make_unique<qsdNode>(csd_result.V1T, csd_result.V2T);
+    matrix = Eigen::MatrixXcf(0, 0);
+}
 
+void csdNode::accept(nodeVisitor &visitor) {
+}
 
+return_type csdNode::get_data() {
+    return_type a;
+    return a;
 }
