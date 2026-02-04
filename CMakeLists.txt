@@ -22,11 +22,20 @@ FetchContent_Declare(
 set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
 FetchContent_MakeAvailable(googletest)
 
+if (${APPLE})
+        set(LAPACKE_DIR "/opt/homebrew/Cellar/lapack/3.12.1/")
+        include_directories(${LAPACKE_DIR}/include
+                /opt/homebrew/include/eigen3)
+        link_directories(${LAPACKE_DIR}/lib)
+endif()
 
 enable_testing()
+
 add_library(SynthQ
         src/qspUcrNode.cpp
         include/qspUcrNode.h
+        include/csd.h
+        src/csd.cpp
         src/one_qubit_gate.cpp
         include/one_qubit_gate.h
         src/unitary.cpp
@@ -46,18 +55,17 @@ add_library(SynthQ
 add_executable(Test
         test/test_one_qubit.cpp
         test/test_mcgates.cpp
-        test/test_qsp.cpp)
+        test/test_qsp.cpp
+        test/test_csd.cpp)
 
 target_link_libraries(
         Test
         GTest::gtest_main
         SynthQ
+        lapacke
 )
 
 include(GoogleTest)
-
-find_package(Eigen3 REQUIRED)
-include_directories(${EIGEN3_INCLUDE_DIR})
 
 
 

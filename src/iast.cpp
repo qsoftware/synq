@@ -3,10 +3,7 @@
 //
 
 #include "../include/iast.h"
-
-#include <algorithm>
 #include<cmath>
-#include <iostream>
 #include <ostream>
 #include "../include/nodeVisitor.h"
 

@@ -56,10 +56,10 @@ TEST(QSPTests, BasisState2Qubits) {
 TEST(QSPTests, ComplexState2Qubits) {
 
     std::vector<std::complex<double>> state = {
-        0.122 + 0.0j,   
-        0.0 + 0.122j,   
-        0.173 - 0.433j,
-        0.520 + 0.693j
+        std::complex(0.122, 0.0),
+        std::complex(0.0, 0.122),
+        std::complex(0.173, 0.433),
+        std::complex(0.520, 0.693)
     };
 
     auto qsp = qspUcrNode(&state);
@@ -76,14 +76,14 @@ TEST(QSPTests, ComplexState2Qubits) {
 TEST(QSPTests, GHZState) {
 
     std::vector<std::complex<double>> state = {
-        1.0/std::sqrt(2.0),     
-        0.0,    
-        0.0,    
-        0.0,    
-        0.0,    
-        0.0,    
-        0.0,    
-        1.0j/std::sqrt(2.0)
+        1.0/std::sqrt(2.0),
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        std::complex(0.0, 1.0)/std::sqrt(2.0)
     };
 
     auto qsp = qspUcrNode(&state);
@@ -101,14 +101,14 @@ TEST(QSPTests, ComplexLadder3Qubits) {
     using namespace std::complex_literals;
 
     std::vector<std::complex<double>> state = {
-        0.0700140042014005 + 0.0j, 
-        0.0 + 0.140028008402801j, 
-        0.2100420126042015 + 0.0j,  
-        0.0 + 0.280056016805602j, 
-        0.3500700210070025 + 0.0j, 
-        0.0 + 0.420084025208403j,    
-        0.4900980294098035 + 0.0j,  
-        0.0 + 0.560112033611204j 
+        0.0700140042014005f + 0.0if,
+        0.0f + 0.140028008402801if,
+        0.2100420126042015f + 0.0if,
+        0.0f + 0.280056016805602if,
+        0.3500700210070025f + 0.0if,
+        0.0f + 0.420084025208403if,
+        0.4900980294098035f + 0.0if,
+        0.0f + 0.560112033611204if
     };
 
     auto qsp = qspUcrNode(&state);

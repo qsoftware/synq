@@ -14,6 +14,10 @@ class nodeVisitor;
 // Adicione std::vector<std::complex<double>> na lista
 using return_type = std::variant<double, std::vector<double>, std::vector<std::complex<double>>>;
 
+/**
+ * IASTnode class is the base class of the Abstract Syntax Tree
+ * used to parse quantum operations into quantum assembler.
+ */
 class IASTnode
 {
 public:
