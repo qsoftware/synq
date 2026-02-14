@@ -9,10 +9,7 @@ unitary::unitary(const Eigen::MatrixXcf &uMatrix) {
 }
 
 std::string unitary::unitary2qasm() {
-    std::string qasm;
-    qasm += "OPENQASM 3.0;\n";
-    qasm += "include \"stdgates.inc\";\n";
-    qasm += "qreg q[1];\n";
+    std::string qasm = "";
     if (data.cols() == 2) {
         auto results = OneQubit::zyz_decomposition(data);
         qasm += "rz(" + std::to_string(results.delta) + ") q[0];\n";

@@ -3,7 +3,7 @@
 //
 
 #pragma once
-#include <memory>
+#include <Eigen/Dense>
 #include <vector>
 #include <string>
 #include <variant>
@@ -12,7 +12,7 @@
 class nodeVisitor;
 
 // Adicione std::vector<std::complex<double>> na lista
-using return_type = std::variant<double, std::vector<double>, std::vector<std::complex<double>>>;
+using return_type = std::variant<double, std::vector<double>, std::vector<std::complex<double>>, Eigen::Matrix2cf>;
 
 /**
  * IASTnode class is the base class of the Abstract Syntax Tree

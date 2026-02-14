@@ -170,3 +170,10 @@ void qasmVisitor::visit(qspUcrNode &node) {
     }
 }
 
+void qasmVisitor::visit(unitaryNode &node) {
+    if (node.num_qubits == 1) {
+        qasm_code += std::visit(return_type_visitor{}, node.get_data());
+    } else
+        throw std::runtime_error("not implemented");
+}
+
