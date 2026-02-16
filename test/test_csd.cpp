@@ -48,6 +48,15 @@ TEST(CSD_TEST, UNITARY_GATE) {
     ASSERT_TRUE(test_ver);
 }
 
+TEST(CSD_TEST, RND4) {
+    auto T =random_unitary_matrix(4);
+
+    auto out = csd(T, 2, 2);
+    auto test_ver = verify(T, out);
+
+    ASSERT_TRUE(test_ver);
+}
+
 TEST(CSD_TEST, RND8) {
     auto T =random_unitary_matrix(8);
 

@@ -174,6 +174,28 @@ void qasmVisitor::visit(unitaryNode &node) {
     if (node.num_qubits == 1) {
         qasm_code += std::visit(return_type_visitor{}, node.get_data());
     } else
-        throw std::runtime_error("not implemented");
+        node.decomposition->accept(*this);
 }
 
+void qasmVisitor::visit(csdNode &node) {
+    if (node.left_ucg)
+        node.left_ucg->accept(*this);
+
+    if (node.mcry)
+        node.mcry->accept(*this);
+
+    if (node.right_ucg)
+        node.right_ucg->accept(*this);
+}
+
+void qasmVisitor::visit(qsdNode &node) {
+
+    if (node.right_unitary)
+        node.right_unitary->accept(*this);
+
+    if (node.mcrz)
+        node.mcrz->accept(*this);
+
+    if (node.left_unitary)
+        node.left_unitary->accept(*this);
+}

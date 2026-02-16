@@ -66,6 +66,8 @@ add_library(SynthQ
         src/ucRotationNode.cpp
         src/unitaryNode.cpp
         include/unitaryNode.h
+        src/csdNode.cpp
+        include/csdNode.h
 )
 
 add_executable(Test
@@ -75,7 +77,8 @@ add_executable(Test
         test/test_csd.cpp
         test/test_rnd_unitary.cpp
         test/test_qsd.cpp
-        test/test_unitary_node.cpp)
+        test/test_unitary_node.cpp
+        test/test_qsdNode.cpp)
 
 if (UNIX AND NOT APPLE)
         target_link_libraries(

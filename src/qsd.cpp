@@ -22,9 +22,9 @@ qsd_result qsd(Eigen::MatrixXcf gate1, Eigen::MatrixXcf gate2) {
         d_vector[i] = eig_list_d[i];
     }
     qsd_result b;
-    b.gate_v = gate_v;
+    b.left_gate = gate_v;
     b.list_d = d_vector;
 
-    b.gate_w = d_vector.asDiagonal() *  gate_v.adjoint() * gate2;
+    b.right_gate = d_vector.asDiagonal() *  gate_v.adjoint() * gate2;
     return b;
 }

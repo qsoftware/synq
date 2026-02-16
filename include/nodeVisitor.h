@@ -3,6 +3,7 @@
 //
 
 #pragma once
+#include "csdNode.h"
 #include "ucrzNode.h"
 #include "ucryNode.h"
 #include "qspUcrNode.h"
@@ -22,6 +23,8 @@ public:
     virtual void visit(UCRotationNode &node) = 0;
     virtual void visit(qspUcrNode &node) = 0;
     virtual void visit(unitaryNode & node) = 0;
+    virtual void visit(csdNode & node) = 0;
+    virtual void visit(qsdNode & node) = 0;
 };
 
 struct return_type_visitor {
@@ -55,4 +58,6 @@ public:
     void visit(UCRotationNode &node) override;
     void visit(qspUcrNode &node) override;
     void visit(unitaryNode & node) override;
+    void visit(csdNode & node) override;
+    void visit(qsdNode & node) override;
 };

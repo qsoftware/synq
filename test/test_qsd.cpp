@@ -30,8 +30,8 @@ TEST(QSD_TEST, h_x) {
     auto result = qsd(M1, M2);
 
     // correct?
-    const auto V = KroneckerProduct(id, result.gate_v);
-    const auto W = KroneckerProduct(id, result.gate_w);
+    const auto V = KroneckerProduct(id, result.left_gate);
+    const auto W = KroneckerProduct(id, result.right_gate);
     MatrixXcf d_matrix = MatrixXcf::Zero(2*result.list_d.size(), 2*result.list_d.size());
     const MatrixXcf D = result.list_d.asDiagonal();
 
@@ -59,8 +59,8 @@ TEST(QSD_TEST, rnd_rnd) {
     auto result = qsd(M1, M2);
 
     // correct?
-    const auto V = KroneckerProduct(id, result.gate_v);
-    const auto W = KroneckerProduct(id, result.gate_w);
+    const auto V = KroneckerProduct(id, result.left_gate);
+    const auto W = KroneckerProduct(id, result.right_gate);
     MatrixXcf d_matrix = MatrixXcf::Zero(2*result.list_d.size(), 2*result.list_d.size());
     const MatrixXcf D = result.list_d.asDiagonal();
 
