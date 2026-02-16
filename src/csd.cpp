@@ -109,6 +109,8 @@ bool verify(Eigen::MatrixXcf& unitary, csd_result result) {
 
     sigma << C, -S, S, C;
 
+    std::cout << sigma << std::endl;
+
     Eigen::MatrixXcf out = V * sigma * U;
     if (out.isApprox(unitary)) return true;
     return false;

@@ -178,14 +178,21 @@ void qasmVisitor::visit(unitaryNode &node) {
 }
 
 void qasmVisitor::visit(csdNode &node) {
-    if (node.left_ucg)
-        node.left_ucg->accept(*this);
-
-    if (node.mcry)
-        node.mcry->accept(*this);
 
     if (node.right_ucg)
+        qasm_code += "\n// right\n\n";
         node.right_ucg->accept(*this);
+
+
+
+    if (node.mcry)
+        qasm_code += "\n// mcry\n\n";
+        node.mcry->accept(*this);
+
+    if (node.left_ucg)
+        qasm_code += "\n// left\n\n";
+        node.left_ucg->accept(*this);
+
 }
 
 void qasmVisitor::visit(qsdNode &node) {

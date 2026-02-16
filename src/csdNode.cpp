@@ -15,12 +15,16 @@
 csdNode::csdNode(Eigen::MatrixXcf& unitary_matrix) {
     long p = unitary_matrix.rows() / 2;
     auto csd_result = csd(unitary_matrix, p, p);
-    left_ucg = std::make_unique<qsdNode>(csd_result.U1, csd_result.U2);
+    right_ucg = std::make_unique<qsdNode>(csd_result.U1, csd_result.U2);
     std::cout << csd_result.U1 << "\n\n" << csd_result.U2 << std::endl;
-    right_ucg = std::make_unique<qsdNode>(csd_result.V1T, csd_result.V2T);
-
     left_ucg = std::make_unique<qsdNode>(csd_result.V1T, csd_result.V2T);
-    mcry = std::make_unique<firstUcryNode>(&csd_result.theta);
+
+    // left_ucg = std::make_unique<qsdNode>(csd_result.V1T, csd_result.V2T);
+    std::vector<double> angles(csd_result.theta.size());
+    for (size_t i = 0; i < csd_result.theta.size(); ++i) {
+        angles[i] =  2 * csd_result.theta[i];
+    }
+    mcry = std::make_unique<firstUcryNode>(&angles);
 
 }
 

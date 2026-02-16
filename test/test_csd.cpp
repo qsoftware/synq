@@ -6,6 +6,8 @@
 #include <gtest/gtest.h>
 #include "../include/csd.h"
 #include "../include/randomUnitary.h"
+#include "../include/one_qubit_gate.h"
+#include <unsupported/Eigen/KroneckerProduct>
 
 
 using namespace std;
@@ -41,6 +43,17 @@ TEST(CSD_TEST, UNITARY_GATE) {
     (-9.016492271986602525e-01f-2.209918615739195902e-01if),
     (-9.627758278964056171e-02f-1.310559524249576557e-01if),
     (-2.001520487551047139e-02f+1.276612783179109645e-01if);
+
+    auto out = csd(T, 2, 2);
+    auto test_ver = verify(T, out);
+
+    ASSERT_TRUE(test_ver);
+}
+
+TEST(CSD_TEST, SEP) {
+    auto matrix1 = OneQubit::h_matrix();
+    auto matrix2 = OneQubit::x_matrix();
+    Eigen::MatrixXcf T = Eigen::KroneckerProduct<Eigen::MatrixXcf, Eigen::MatrixXcf>(matrix1, matrix2);
 
     auto out = csd(T, 2, 2);
     auto test_ver = verify(T, out);
