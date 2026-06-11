@@ -1,14 +1,15 @@
 cmake_minimum_required(VERSION 3.14)
 
-# GoogleTest requires at least C++17
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-project(SynthQ VERSION 0.0.1)
-project(Test)
+project(synq VERSION 0.0.1)
 
 
 include(FetchContent)
+# --------------------
+# google test
+# --------------------
 FetchContent_Declare(
         googletest
         URL https://github.com/google/googletest/archive/03597a01ee50ed33e9dfd640b249b4be3799d395.zip
@@ -16,26 +17,31 @@ FetchContent_Declare(
 # For Windows: Prevent overriding the parent project's compiler/linker settings
 set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
 FetchContent_MakeAvailable(googletest)
+
+
+# --------------------
+# Eigen
+# --------------------
+# Eigen (header-only)
+FetchContent_Declare(
+        eigen
+        GIT_REPOSITORY https://gitlab.com/libeigen/eigen.git
+        GIT_TAG 3.4.0
+)
+
+FetchContent_MakeAvailable(eigen)
+
+
+# --------------------
+# Lapack
+# --------------------
 find_package(LAPACK REQUIRED)
-if (APPLE)
-
-        set(OpenBLAS_DIR "/opt/homebrew/opt/openblas") # Example path
-        include_directories(${OpenBLAS_DIR}/include)
-        link_directories(${OpenBLAS_DIR}/lib)
-
-        set(LAPACKE_DIR "/opt/homebrew/Cellar/lapack/3.12.1/")
-        include_directories(${LAPACKE_DIR}/include
-                /opt/homebrew/include/eigen3)
-        link_directories(${LAPACKE_DIR}/lib)
-endif()
-
-if (UNIX AND NOT APPLE)
-        include_directories("/usr/local/include/eigen-3.4.0/")
-endif()
+find_library(LAPACKE_LIBRARY lapacke REQUIRED)
+find_path(LAPACKE_INCLUDE_DIR lapacke.h REQUIRED)
 
 enable_testing()
 
-add_library(SynthQ
+add_library(synq
         src/qspUcrNode.cpp
         include/qspUcrNode.h
         include/csd.h
@@ -86,25 +92,17 @@ add_executable(Test
         test/test_unitary.cpp
         test/test_diagonal.cpp)
 
-if (UNIX AND NOT APPLE)
-        target_link_libraries(
-                Test
-                GTest::gtest_main
-                SynthQ
-                lapacke
-        )
-endif()
+target_link_libraries(synq Eigen3::Eigen)
 
-if (${APPLE})
-        target_link_libraries(
-                Test
-                GTest::gtest_main
-                SynthQ
-                openblas
-                lapacke
-        )
-endif()
-target_link_libraries(Test ${BLAS_LIBRARIES})
+target_link_libraries(
+        Test
+        GTest::gtest_main
+        synq
+)
+
+target_link_libraries(Test
+        ${BLAS_LIBRARIES}
+        ${LAPACKE_LIBRARY})
 
 include(GoogleTest)
 
