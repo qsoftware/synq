@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <cmath>
 #include <complex>
+#include <numbers>
 #include "../include/nodeVisitor.h"
 
 qspUcrNode::qspUcrNode(const std::vector<std::complex<double>>* state) {
@@ -22,7 +23,7 @@ void qspUcrNode::init(){
     if(num_qubits > 1){
         for (int i = 0; i < this->state.size()/2; i++){
 
-            this->angles_rz[i] = std::remainder(std::arg(this->state[2*i+1]) - std::arg(this->state[2*i]), 2*M_PI);
+            this->angles_rz[i] = std::remainder(std::arg(this->state[2*i+1]) - std::arg(this->state[2*i]), 2*std::numbers::pi);
 
             double norm = std::sqrt((std::pow(std::abs(this->state[2*i]),2) + std::pow(std::abs(this->state[2*i+1]),2)));
             double phase = (std::arg(this->state[2*i]) + std::arg(this->state[2*i+1])) / 2.0;
@@ -46,7 +47,7 @@ void qspUcrNode::init(){
         this->global_phase = (std::arg(this->state[0]) + std::arg(this->state[1])) / 2.0;
 
         double base_norm = std::sqrt((std::pow(std::abs(this->state[0]),2) + std::pow(std::abs(this->state[1]),2)));
-        double angle_rz = std::remainder(std::arg(this->state[1]) - std::arg(this->state[0]), 2*M_PI);
+        double angle_rz = std::remainder(std::arg(this->state[1]) - std::arg(this->state[0]), 2*std::numbers::pi);
         double angle_ry = 0.0;
         if (base_norm > 1e-12) {
             angle_ry = std::abs(this->state[1]) / base_norm;

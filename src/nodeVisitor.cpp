@@ -5,6 +5,7 @@
 #include "../include/nodeVisitor.h"
 #include "../include/diagonalGateNode.h"
 #include <utility>
+#include<numbers>
 
 qasmVisitor::qasmVisitor(int num_qubits) {
     _num_qubits = num_qubits;
@@ -178,7 +179,7 @@ void qasmVisitor::visit(unitaryGateNode &node) {
     node.csd->accept(*this);
 
     if (node.get_num_qubits() == _num_qubits) {
-        global_phase = std::fmod(global_phase, 2 * M_PI);
+        global_phase = std::fmod(global_phase, 2 * std::numbers::pi);
         qasm_code += "gphase(" + std::to_string(global_phase) + ");\n";
     }
     
