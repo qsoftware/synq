@@ -1,13 +1,13 @@
-//
+﻿//
 // Created by adenilton on 10/10/25.
 //
 
 #include "../include/csd.h"
 #include<iostream>
 
-csd_result csd(const Eigen::MatrixXcd& unitary, int p, int q) {
-    int m = unitary.rows();
-    int n = unitary.cols();
+csd_result csd(const Eigen::MatrixXcd& unitary, Eigen::Index p, Eigen::Index q) {
+    auto m = unitary.rows();
+    auto n = unitary.cols();
 
     const auto X11 = eigen2lapack(unitary, 0, 0, p, p);
     const auto X21 = eigen2lapack(unitary, 0, q, p, n-p);
@@ -15,9 +15,12 @@ csd_result csd(const Eigen::MatrixXcd& unitary, int p, int q) {
     const auto X22 = eigen2lapack(unitary, p, q, m-p, n-q);
 
     const int r = std::min({p, q, m-p, m-q});
-    double theta[r];
+    std::vector<double> theta(r);
 
-    lapack_complex_double V1T[q*q], V2T[(m-q)*(m-q)], U1[p*p], U2[(m-p)*(m-p)];
+    std::vector<lapack_complex_double> V1T(q * q);
+    std::vector<lapack_complex_double> V2T((m - q) * (m - q));
+    std::vector<lapack_complex_double> U1(p * p);
+    std::vector<lapack_complex_double> U2((m - p) * (m - p));
 
     const int ldx11 = p;
     const int ldx12 = p;
@@ -41,20 +44,20 @@ csd_result csd(const Eigen::MatrixXcd& unitary, int p, int q) {
         X12, ldx12, // x12, ldx12
         X21, ldx21, // x21, ldx21
         X22, ldx22, // x11, ldx11
-        theta,
-        U1, ldu1,
-        U2, ldu2,
-        V1T, ldv1t,
-        V2T, ldv2t // x22, ldx22
+        theta.data(),
+        U1.data(), ldu1,
+        U2.data(), ldu2,
+        V1T.data(), ldv1t,
+        V2T.data(), ldv2t // x22, ldx22
     );
 
     if (info != 0) std::cerr << "LAPACKE_cuncsd: " << info << std::endl;
 
-    const Eigen::Map<Eigen::MatrixXcd> out_U1(U1, p, p);
-    const Eigen::Map<Eigen::MatrixXcd> out_U2(U2, m-p, m-p);
-    const Eigen::Map<Eigen::MatrixXcd> out_V1T(V1T, p, p);
-    const Eigen::Map<Eigen::MatrixXcd> out_V2T(V2T, m-p, m-p);
-    const std::vector<double> out_theta(theta, theta + r);
+    const Eigen::Map<Eigen::MatrixXcd> out_U1(reinterpret_cast<std::complex<double>*> (U1.data()), p, p);
+    const Eigen::Map<Eigen::MatrixXcd> out_U2(reinterpret_cast<std::complex<double>*> (U2.data()), m-p, m-p);
+    const Eigen::Map<Eigen::MatrixXcd> out_V1T(reinterpret_cast<std::complex<double>*> (V1T.data()), p, p);
+    const Eigen::Map<Eigen::MatrixXcd> out_V2T(reinterpret_cast<std::complex<double>*> (V2T.data()), m-p, m-p);
+    const std::vector<double> out_theta(theta);
 
     csd_result out;
     out.U1 = out_U1;
@@ -73,11 +76,11 @@ csd_result csd(const Eigen::MatrixXcd& unitary, int p, int q) {
 lapack_complex_double* eigen2lapack(const Eigen::MatrixXcd& unitary, const int start_line, const int start_col, const int n_rows, const int n_cols) {
     lapack_complex_double* U1 = new lapack_complex_double[n_rows * n_cols];
 
-    for (int j = 0; j < n_cols; ++j)
-        for (int i = 0; i < n_rows; ++i) {
+    for (Eigen::Index j = 0; j < n_cols; ++j)
+        for (Eigen::Index i = 0; i < n_rows; ++i) {
             const double a = unitary(i + start_line, j+start_col).real();
             const double b = unitary(i + start_line, j+start_col).imag();
-            U1[n_rows*j +i] = std::complex(a, b);
+            U1[n_rows*j +i] = complexD(a, b);
         }
     return U1;
 }
@@ -98,7 +101,7 @@ bool verify(const Eigen::MatrixXcd& unitary, csd_result result) {
     V.block(q, q, n_rows-q, n_rows-q) = result.V2T;
 
 
-    const int r = result.theta.size();
+    const size_t r = result.theta.size();
     Eigen::MatrixXcd S = Eigen::MatrixXcd::Zero(r, r);
     Eigen::MatrixXcd C = Eigen::MatrixXcd::Zero(r, r);
     Eigen::MatrixXcd sigma(2*r, 2*r);
