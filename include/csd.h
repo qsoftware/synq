@@ -12,7 +12,7 @@
     #define lapack_complex_double std::complex<double>
     #include<Eigen/Dense>
     #include <lapacke.h>
-    typedef std::complex<doublde> complexD;
+    typedef std::complex<double> complexD;
 #endif
 
 
