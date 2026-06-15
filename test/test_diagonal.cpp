@@ -12,7 +12,7 @@ TEST(DiagonalGateNodeTests, Diagonal4x4Matrix) {
     Eigen::Matrix4cd diagonal;
     
     Eigen::Vector4d random_phases = Eigen::Vector4d::Random();
-    Eigen::Vector4cd diag_elements = (1j * random_phases.cast<std::complex<double>>().array()).exp();
+    Eigen::Vector4cd diag_elements = (1.0i * random_phases.cast<std::complex<double>>().array()).exp();
 
     diagonal = diag_elements.asDiagonal();
 
@@ -33,7 +33,7 @@ TEST(DiagonalGateNodeTests, Diagonal8x8Matrix) {
     Eigen::MatrixXcd diagonal;
     
     Eigen::VectorXd random_phases = Eigen::VectorXd::Random(8);
-    Eigen::VectorXcd diag_elements = (1j * random_phases.cast<std::complex<double>>().array()).exp();
+    Eigen::VectorXcd diag_elements = (1.0i * random_phases.cast<std::complex<double>>().array()).exp();
 
     diagonal = diag_elements.asDiagonal();
 
@@ -55,7 +55,7 @@ TEST(DiagonalGateNodeTests, Diagonal16x16Matrix) {
     Eigen::MatrixXcd diagonal;
     
     Eigen::VectorXd random_phases = Eigen::VectorXd::Random(16);
-    Eigen::VectorXcd diag_elements = (1j * random_phases.cast<std::complex<double>>().array()).exp();
+    Eigen::VectorXcd diag_elements = (1.0i * random_phases.cast<std::complex<double>>().array()).exp();
 
     diagonal = diag_elements.asDiagonal();
 
