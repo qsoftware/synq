@@ -10,34 +10,25 @@ include(FetchContent)
 # --------------------
 # google test
 # --------------------
-FetchContent_Declare(
-        googletest
-        URL https://github.com/google/googletest/archive/03597a01ee50ed33e9dfd640b249b4be3799d395.zip
-)
-# For Windows: Prevent overriding the parent project's compiler/linker settings
-set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
-FetchContent_MakeAvailable(googletest)
+find_package(GTest CONFIG REQUIRED)
 
 
 # --------------------
 # Eigen
 # --------------------
-# Eigen (header-only)
-FetchContent_Declare(
-        eigen
-        GIT_REPOSITORY https://gitlab.com/libeigen/eigen.git
-        GIT_TAG 3.4.0
-)
-
-FetchContent_MakeAvailable(eigen)
-
+find_package(Eigen3 REQUIRED NO_MODULE)
 
 # --------------------
-# Lapack
+# MKL(WIN32) or Lapack(UNIX)
 # --------------------
-find_package(LAPACK REQUIRED)
-find_library(LAPACKE_LIBRARY lapacke REQUIRED)
-find_path(LAPACKE_INCLUDE_DIR lapacke.h REQUIRED)
+if (WIN32)
+    add_definitions(-DUSE_MKL)
+    find_package(MKL CONFIG REQUIRED)
+else()
+    find_package(LAPACK REQUIRED)
+    find_library(LAPACKE_LIBRARY lapacke REQUIRED)
+    find_path(LAPACKE_INCLUDE_DIR lapacke.h REQUIRED)
+endif()
 
 enable_testing()
 
@@ -92,19 +83,22 @@ add_executable(Test
         test/test_unitary.cpp
         test/test_diagonal.cpp)
 
-target_link_libraries(synq Eigen3::Eigen)
-
-target_link_libraries(
-        Test
-        GTest::gtest_main
-        synq
-)
-
-target_link_libraries(Test
+if(WIN32)
+    target_link_libraries(synq 
+        Eigen3::Eigen
+        MKL::MKL)
+else()
+    target_link_libraries(synq 
+        Eigen3::Eigen
         ${BLAS_LIBRARIES}
         ${LAPACKE_LIBRARY})
+endif()
+
+target_link_libraries(Test
+        GTest::gtest_main
+        synq)
 
 include(GoogleTest)
-
+gtest_discover_tests(Test)
 
 
