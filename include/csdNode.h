@@ -11,6 +11,7 @@
 #pragma once
 #include <memory>
 #include <vector>
+#include <tuple>
 #include "iast.h"
 #include <Eigen/Dense>
 #include "csd.h"
@@ -18,7 +19,7 @@
 #include "ucryNode.h"
 
 /**
- * @class csdNode
+ * @class csdNode   
  * @brief AST Node representing a Cosine-sine decomposition.
  * 
  * This node decomposes a matrix into one/two qubit gates using cosine-sine decomposition
@@ -79,6 +80,30 @@ private:
      * @return std::unique_ptr<ucryNode> Newly created UCry node encoding the controlled RY rotations.
      */
     std::unique_ptr<ucryNode> createUcry(const std::vector<double>& angles);
+
+    /**
+     * @brief Check if a matrix is a generalized permutation matrix.
+     * 
+     * @param matrix The matrix to check.
+     * @return bool True if each row and column has exactly one non-zero element.
+     */
+    bool is_generalized_permutation(const Eigen::MatrixXcd& matrix);
+
+    /**
+     * @brief Optimize synthesis when blocks are generalized permutation matrices by transforming them into diagonals.
+     *
+     * @param left_gate Vector with two left block matrices.
+     * @param right_gate Vector with two right block matrices.
+     * @param theta Vector of angles (theta) to transform.
+     * @param side 'L' for left or 'R' for right optimization.
+     * @return std::tuple<std::vector<Eigen::MatrixXcd>, std::vector<Eigen::MatrixXcd>, Eigen::VectorXd>
+     *         New left/right gates and transformed theta.
+     */
+    std::tuple<std::vector<Eigen::MatrixXcd>, std::vector<Eigen::MatrixXcd>, Eigen::VectorXd>
+    permutation_optimization(const std::vector<Eigen::MatrixXcd>& left_gate,
+                             const std::vector<Eigen::MatrixXcd>& right_gate,
+                             const Eigen::VectorXd& theta,
+                             char side);
 
     /**
      * @brief Unitary base matrix for the decomposition

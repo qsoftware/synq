@@ -147,3 +147,54 @@ TEST(UnitaryGateNodeTests, SU4Test2) {
 
     EXPECT_TRUE(su4Matrix.isApprox(reconstructedMatrix, 1e-6)) << "ERROR.";
 }
+
+TEST(UnitaryGateNodeTests, DiagonalOptimizationTest) {
+    /*
+    Test for diagonal optimization in unitary gate decomposition.
+    We create an instance of the CSD decomposition where the first mux is a diagonal matrix.
+    */
+
+    Eigen::MatrixXcd A;
+    Eigen::MatrixXcd B;
+    Eigen::MatrixXcd mux = Eigen::MatrixXcd::Zero(16, 16);
+
+    A = random_unitary_matrix(8);
+    B = random_unitary_matrix(8);
+
+    // First Mux
+    mux.topLeftCorner(8, 8) = A;
+    mux.bottomRightCorner(8, 8) = B;
+
+    Eigen::MatrixXcd ucry = Eigen::MatrixXcd::Zero(16, 16);
+
+    Eigen::VectorXd theta = Eigen::VectorXd::Random(8);
+
+    Eigen::MatrixXcd C = theta.array().cos().cast<complex<double>>().matrix().asDiagonal();
+    Eigen::MatrixXcd S = theta.array().sin().cast<complex<double>>().matrix().asDiagonal();
+
+    // Ucry
+    ucry.topLeftCorner(8, 8) = C;
+    ucry.topRightCorner(8, 8) = -S;
+    ucry.bottomLeftCorner(8, 8) = S;
+    ucry.bottomRightCorner(8, 8) = C;
+
+    Eigen::MatrixXcd diagonal;
+    
+    Eigen::VectorXd random_phases = Eigen::VectorXd::Random(16);
+    Eigen::VectorXcd diag_elements = (1.0i * random_phases.cast<std::complex<double>>().array()).exp();
+
+    // Second mux is a diagonal matrix
+    diagonal = diag_elements.asDiagonal();
+
+    // Final unitary matrix is the product of the three components
+    Eigen::MatrixXcd unitary = mux * ucry * diagonal;
+
+    cout << "Expected Unitary: \n" << unitary << endl;
+
+    auto unitaryNode = unitaryGateNode(unitary);
+    auto visitor = qasmVisitor(4);
+    
+    unitaryNode.accept(visitor);
+    std::cout << visitor.qasm_code << std::endl;
+
+}

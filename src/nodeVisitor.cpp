@@ -223,7 +223,7 @@ void qasmVisitor::visit(oneQubitDiagonalGateNode &node) {
     if (std::abs(node.global_phase) > 1e-12) {
         qasm_code += "gphase(" + std::to_string(node.global_phase) + ");\n";
     }
-    qasm_code += "p(" + std::to_string(node.p_phase) + ") q[0];\n";
+    qasm_code += "p(" + std::to_string(node.p_phase) + ") q[" + std::to_string(current_msb+1) + "];\n";
 }
 
 void qasmVisitor::visit(csdNode &node) {

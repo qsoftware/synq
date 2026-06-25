@@ -16,6 +16,7 @@
 #include "qsd.h"
 #include "unitaryGateNode.h"
 #include "ucrzNode.h"
+#include "diagonalGateNode.h"
 
 /**
  * @class qsdNode
@@ -52,11 +53,11 @@ public:
     /**
     * @brief First unitary gate of the decomposed circuit
     */
-    std::unique_ptr<unitaryGateNode> gate_v;
+    std::unique_ptr<IASTnode> gate_v;
     /**
     * @brief Second unitary gate of the decomposed circuit
     */
-    std::unique_ptr<unitaryGateNode> gate_w;
+    std::unique_ptr<IASTnode> gate_w;
     /**
     * @brief Unitary controlled RZ of the decomposed circuit
     */
@@ -77,6 +78,13 @@ private:
      * @return std::unique_ptr<IASTnode> Newly created Ucrz node encoding the controlled RZ rotations.
      */
     std::unique_ptr<ucrzNode> createUcrz(const std::vector<double>& angles);
+    /**
+     * @brief Factory method to create a unique pointer to a diagonal gate node.
+     *
+     * @param matrix A diagonal matrix representing a multi-qubit diagonal gate.
+     * @return std::unique_ptr<diagonalGateNode> Newly created diagonalGateNode.
+     */
+    std::unique_ptr<diagonalGateNode> createDiagonal(const Eigen::MatrixXcd& matrix);
 
     /**
     * @brief First unitary base matrix for the decomposition
