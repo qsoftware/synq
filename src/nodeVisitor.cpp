@@ -4,6 +4,7 @@
 
 #include "../include/nodeVisitor.h"
 #include "../include/diagonalGateNode.h"
+#include "../include/ctrl_qubit_gate.h"
 #include <utility>
 #include<numbers>
 
@@ -266,5 +267,19 @@ void qasmVisitor::visit(twoQubitGateNode &node) {
 
     node.gate_a->accept(*this);
     node.gate_b->accept(*this);
+
+}
+
+
+void qasmVisitor::visit(ctrl_qubit_gate &node) {
+   
+    qasm_code += "p(" + std::to_string(node.phase_alpha) + ") q[" + std::to_string(node.control) + "];\n";
+    qasm_code += "rz(" + std::to_string((node.angles.delta - node.angles.beta) / 2.0) + ") q[" + std::to_string(node.target) + "];\n";
+    qasm_code += "cx q[" + std::to_string(node.control) + "], q[" + std::to_string(node.target) + "];\n";
+    qasm_code += "rz(" + std::to_string(-(node.angles.delta + node.angles.beta) / 2.0) + ") q[" + std::to_string(node.target) + "];\n";
+    qasm_code += "ry(" + std::to_string(-node.angles.gamma / 2.0) + ") q[" + std::to_string(node.target) + "];\n";
+    qasm_code += "cx q[" + std::to_string(node.control) + "], q[" + std::to_string(node.target) + "];\n";
+    qasm_code += "ry(" + std::to_string(node.angles.gamma / 2.0) + ") q[" + std::to_string(node.target) + "];\n";
+    qasm_code += "rz(" + std::to_string(node.angles.beta) + ") q[" + std::to_string(node.target) + "];\n";
 
 }

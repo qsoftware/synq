@@ -16,8 +16,11 @@
 #include "csdNode.h"
 #include "qsdNode.h"
 #include "unitaryGateNode.h"
+#include "ctrl_qubit_gate.h"
+
 class diagonalGateNode;
 class oneQubitDiagonalGateNode;
+class ctrl_qubit_gate;
 
 class nodeVisitor {
 public:
@@ -37,6 +40,7 @@ public:
     virtual void visit(unitaryOneQubitGateNode &node) = 0;
     virtual void visit(diagonalGateNode &node) = 0;
     virtual void visit(oneQubitDiagonalGateNode &node) = 0;
+    virtual void visit(ctrl_qubit_gate &node) = 0;
 };
 
 struct return_type_visitor {
@@ -89,5 +93,6 @@ public:
     void visit(unitaryOneQubitGateNode &node) override;
     void visit(diagonalGateNode &node) override;
     void visit(oneQubitDiagonalGateNode &node) override;
+    void visit(ctrl_qubit_gate &node) override;
 
 };
