@@ -1,11 +1,14 @@
 #include <gtest/gtest.h>
+#include "test_utils.h"
 #include "../include/unitaryGateNode.h"
 #include "../include/nodeVisitor.h"
 #include "../include/randomUnitary.h"
 #include "../include/twoQubitsUnitary.h"
+#include "../include/one_qubit_gate.h"
 #include <iostream>
 #include <complex>
 #include <unsupported/Eigen/KroneckerProduct>
+
 
 TEST(UnitaryGateNodeTests, Unitary2x2Matrix) {
 
@@ -21,13 +24,16 @@ TEST(UnitaryGateNodeTests, Unitary2x2Matrix) {
     unitaryNode.accept(visitor);
 
     std::cout << visitor.qasm_code << std::endl;
+    Eigen::Matrix2cd converted_matrix = one_qubit_qasm_to_matrix(visitor.qasm_code);
 
     EXPECT_FALSE(visitor.qasm_code.empty());
     EXPECT_NE(visitor.qasm_code.find("OPENQASM"), std::string::npos);
+    EXPECT_TRUE(converted_matrix.isApprox(matrix, 1e-6));
 }
 
 TEST(UnitaryGateNodeTests, IdentityGate) {
     Eigen::MatrixXcd eye(4, 4);
+   
     eye << 1, 0, 0, 0,
             0, 1, 0, 0,
             0, 0, 1, 0,
@@ -40,9 +46,11 @@ TEST(UnitaryGateNodeTests, IdentityGate) {
     unitaryNode.accept(visitor);
 
     std::cout << visitor.qasm_code << std::endl;
+    Eigen::MatrixXcd reconstructed = qasm_to_matrix(visitor.qasm_code, 2);
     
     EXPECT_FALSE(visitor.qasm_code.empty());
     EXPECT_NE(visitor.qasm_code.find("OPENQASM"), std::string::npos);
+    EXPECT_TRUE(eye.isApprox(reconstructed, 1e-6));
 }
 
 TEST(UnitaryGateNodeTests, CNOTGate) {
@@ -59,9 +67,11 @@ TEST(UnitaryGateNodeTests, CNOTGate) {
     unitaryNode.accept(visitor);
 
     std::cout << visitor.qasm_code << std::endl;
+    Eigen::MatrixXcd reconstructed = qasm_to_matrix(visitor.qasm_code, 2);
     
     EXPECT_FALSE(visitor.qasm_code.empty());
     EXPECT_NE(visitor.qasm_code.find("OPENQASM"), std::string::npos);
+    EXPECT_TRUE(cnot.isApprox(reconstructed, 1e-6));
 }
 
 TEST(UnitaryGateNodeTests, Random4x4Unitary) {
@@ -75,8 +85,11 @@ TEST(UnitaryGateNodeTests, Random4x4Unitary) {
     std::cout << visitor.qasm_code << std::endl;
     std::cout << "Expected Unitary: \n" << std::endl;
     std::cout << T << std::endl;
+
+    Eigen::MatrixXcd reconstructed = qasm_to_matrix(visitor.qasm_code, 2);
     
     EXPECT_FALSE(visitor.qasm_code.empty());
+    EXPECT_TRUE(T.isApprox(reconstructed, 1e-6));
     EXPECT_NE(visitor.qasm_code.find("OPENQASM"), std::string::npos);
 }
 
@@ -91,8 +104,11 @@ TEST(UnitaryGateNodeTests, Random8x8Unitary) {
     std::cout << visitor.qasm_code << std::endl;
     std::cout << "Expected Unitary: \n" << std::endl;
     std::cout << T << std::endl;
+
+    Eigen::MatrixXcd reconstructed = qasm_to_matrix(visitor.qasm_code, 3);
     
     EXPECT_FALSE(visitor.qasm_code.empty());
+    EXPECT_TRUE(T.isApprox(reconstructed, 1e-6));
     EXPECT_NE(visitor.qasm_code.find("OPENQASM"), std::string::npos);
 }
 

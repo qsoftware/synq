@@ -74,6 +74,7 @@ add_library(synq
 )
 
 add_executable(Test
+        test/test_utils.cpp
         test/test_one_qubit.cpp
         test/test_mcgates.cpp
         test/test_qsp.cpp

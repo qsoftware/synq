@@ -43,6 +43,7 @@ public:
      */
     static Eigen::Matrix2cd rz_matrix(double theta);
 
+    static std::complex<double> gphase(double theta);
 };
 
 
