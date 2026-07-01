@@ -9,6 +9,8 @@
 #include <vector>
 #include <complex>
 #include <string>
+#include <iomanip>
+#include <sstream>
 
 #include "ucrzNode.h"
 #include "ucryNode.h"
@@ -16,8 +18,11 @@
 #include "csdNode.h"
 #include "qsdNode.h"
 #include "unitaryGateNode.h"
+#include "ctrl_qubit_gate.h"
+#include "twoCtrlOperator.h"
 class diagonalGateNode;
 class oneQubitDiagonalGateNode;
+class ctrl_qubit_gate;
 
 class nodeVisitor {
 public:
@@ -37,6 +42,8 @@ public:
     virtual void visit(unitaryOneQubitGateNode &node) = 0;
     virtual void visit(diagonalGateNode &node) = 0;
     virtual void visit(oneQubitDiagonalGateNode &node) = 0;
+    virtual void visit(ctrl_qubit_gate &node) = 0;
+    virtual void visit(CtrlOperatorNode &node) = 0;
 };
 
 struct return_type_visitor {
@@ -45,7 +52,9 @@ struct return_type_visitor {
     }
 
     std::string operator()(const double a) {
-        return std::to_string(a);
+        std::ostringstream oss;
+        oss << std::fixed << std::setprecision(15) << a;
+        return oss.str();
     }
     
     std::string operator()(const std::vector<double> a) { 
@@ -89,5 +98,6 @@ public:
     void visit(unitaryOneQubitGateNode &node) override;
     void visit(diagonalGateNode &node) override;
     void visit(oneQubitDiagonalGateNode &node) override;
-
+    void visit(ctrl_qubit_gate &node) override;
+    void visit(CtrlOperatorNode &node) override;
 };

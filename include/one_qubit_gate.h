@@ -43,6 +43,21 @@ public:
      */
     static Eigen::Matrix2cd rz_matrix(double theta);
 
+    /**
+     * @brief Returns the global phase shift for a given angle
+     * 
+     * @param theta Angle in radians used to compute the global phase shift
+     * @return std::complex<double> The complex number representing the global phase shift
+     */
+    static std::complex<double> gphase(double theta);
+
+    /**
+     * @brief Returns the relative phase shift matrix for a given angle
+     * 
+     * @param theta Angle in radians used to compute the relative phase shift
+     * @return Eigen::Matrix2cd The 2x2 matrix representing the relative phase shift
+     */
+    static Eigen::Matrix2cd p_matrix(double theta);
 };
 
 

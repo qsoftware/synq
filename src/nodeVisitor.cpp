@@ -4,8 +4,20 @@
 
 #include "../include/nodeVisitor.h"
 #include "../include/diagonalGateNode.h"
+#include "../include/ctrl_qubit_gate.h"
 #include <utility>
-#include<numbers>
+#include <numbers>
+#include <iomanip>
+#include <sstream>
+#include <Eigen/Dense>
+#include <unsupported/Eigen/MatrixFunctions>
+
+static std::string format_double(double val){
+    std::ostringstream oss;
+
+    oss << std::fixed << std::setprecision(15) << val;
+    return oss.str();
+}
 
 qasmVisitor::qasmVisitor(int num_qubits) {
     _num_qubits = num_qubits;
@@ -155,7 +167,7 @@ void qasmVisitor::visit(UCRotationNode &node) {
 
 void qasmVisitor::visit(qspUcrNode &node) {
     if (std::abs(node.global_phase) > 1e-12) {
-        qasm_code += "gphase(" + std::to_string(node.global_phase) + ");\n";
+        qasm_code += "gphase(" + format_double(node.global_phase) + ");\n";
     }
     if (node.next_qsp) {
         node.next_qsp->accept(*this);
@@ -180,7 +192,7 @@ void qasmVisitor::visit(unitaryGateNode &node) {
 
     if (node.get_num_qubits() == _num_qubits) {
         global_phase = std::fmod(global_phase, 2 * std::numbers::pi);
-        qasm_code += "gphase(" + std::to_string(global_phase) + ");\n";
+        qasm_code += "gphase(" + format_double(global_phase) + ");\n";
     }
     
     current_msb = previous_msb;
@@ -221,9 +233,9 @@ void qasmVisitor::visit(diagonalGateNode &node) {
 
 void qasmVisitor::visit(oneQubitDiagonalGateNode &node) {
     if (std::abs(node.global_phase) > 1e-12) {
-        qasm_code += "gphase(" + std::to_string(node.global_phase) + ");\n";
+        qasm_code += "gphase(" + format_double(node.global_phase) + ");\n";
     }
-    qasm_code += "p(" + std::to_string(node.p_phase) + ") q[0];\n";
+    qasm_code += "p(" + format_double(node.p_phase) + ") q[0];\n";
 }
 
 void qasmVisitor::visit(csdNode &node) {
@@ -240,9 +252,9 @@ void qasmVisitor::visit(csdNode &node) {
 
 void qasmVisitor::visit(unitaryOneQubitGateNode &node){
     global_phase += node.params.alpha;
-    qasm_code += "rz(" + std::to_string(node.params.delta) + ") q[" + std::to_string(node.position) + "];\n";
-    qasm_code += "ry(" + std::to_string(node.params.gamma) + ") q[" + std::to_string(node.position) + "];\n";
-    qasm_code += "rz(" + std::to_string(node.params.beta) + ") q[" + std::to_string(node.position) + "];\n";
+    qasm_code += "rz(" + format_double(node.params.delta) + ") q[" + std::to_string(node.position) + "];\n";
+    qasm_code += "ry(" + format_double(node.params.gamma) + ") q[" + std::to_string(node.position) + "];\n";
+    qasm_code += "rz(" + format_double(node.params.beta) + ") q[" + std::to_string(node.position) + "];\n";
 }
 
 void qasmVisitor::visit(twoQubitGateNode &node) {
@@ -267,4 +279,37 @@ void qasmVisitor::visit(twoQubitGateNode &node) {
     node.gate_a->accept(*this);
     node.gate_b->accept(*this);
 
+}
+
+void qasmVisitor::visit(ctrl_qubit_gate &node) {
+   
+    qasm_code += "p(" + std::to_string(node.phase_alpha) + ") q[" + std::to_string(node.control) + "];\n";
+    qasm_code += "rz(" + std::to_string((node.angles.delta - node.angles.beta) / 2.0) + ") q[" + std::to_string(node.target) + "];\n";
+    qasm_code += "cx q[" + std::to_string(node.control) + "], q[" + std::to_string(node.target) + "];\n";
+    qasm_code += "rz(" + std::to_string(-(node.angles.delta + node.angles.beta) / 2.0) + ") q[" + std::to_string(node.target) + "];\n";
+    qasm_code += "ry(" + std::to_string(-node.angles.gamma / 2.0) + ") q[" + std::to_string(node.target) + "];\n";
+    qasm_code += "cx q[" + std::to_string(node.control) + "], q[" + std::to_string(node.target) + "];\n";
+    qasm_code += "ry(" + std::to_string(node.angles.gamma / 2.0) + ") q[" + std::to_string(node.target) + "];\n";
+    qasm_code += "rz(" + std::to_string(node.angles.beta) + ") q[" + std::to_string(node.target) + "];\n";
+
+}
+
+void qasmVisitor::visit(CtrlOperatorNode &node){
+    if(node.get_num_ctrl() == 1){
+        ctrl_qubit_gate ctrl_gate = ctrl_qubit_gate(node.get_ctrl(0), node.get_target(), node.OperatorMatrix);
+        visit(ctrl_gate);
+    }
+    if(node.get_num_ctrl() == 2){
+        Eigen::Matrix2cd V = node.OperatorMatrix.sqrt();
+        Eigen::Matrix2cd V_dagger = V.adjoint();
+        Eigen::Matrix2cd X = OneQubit::x_matrix();
+        ctrl_qubit_gate ctrl_gate = ctrl_qubit_gate(node.get_ctrl(1), node.get_target(), V);
+        visit(ctrl_gate);
+        qasm_code += "cx q[" + std::to_string(node.get_ctrl(0)) + "], q[" + std::to_string(node.get_ctrl(1)) + "];\n";
+        ctrl_gate = ctrl_qubit_gate(node.get_ctrl(1), node.get_target(), V_dagger);
+        visit(ctrl_gate);
+        qasm_code += "cx q[" + std::to_string(node.get_ctrl(0)) + "], q[" + std::to_string(node.get_ctrl(1)) + "];\n";
+        ctrl_gate = ctrl_qubit_gate(node.get_ctrl(0), node.get_target(), V);
+        visit(ctrl_gate);
+    }
 }
