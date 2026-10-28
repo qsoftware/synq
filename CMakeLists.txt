@@ -5,6 +5,12 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 project(synq VERSION 0.0.1)
 
+# Eigen and GoogleTest templates exceed the default number of sections of an
+# MSVC object file in the larger test files (error C1128).
+if (MSVC)
+    add_compile_options(/bigobj)
+endif()
+
 
 include(FetchContent)
 
