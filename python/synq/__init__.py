@@ -10,8 +10,11 @@ Functions
 ---------
 state_preparation(state)
     Prepares the normalized vector ``state`` from ``|0...0>``.
-unitary(matrix)
-    Implements a ``2^n x 2^n`` unitary matrix (cosine-sine / Shannon decomposition).
+unitary(matrix, method="qsd")
+    Implements a ``2^n x 2^n`` unitary matrix with the cosine-sine / quantum Shannon
+    decomposition (``method="qsd"``) or the Block-ZXZ decomposition (``method="zxz"``,
+    one CNOT less per decomposition step: 19, 95, 423 instead of 20, 100, 444 for
+    3, 4, 5 qubits).
 diagonal(diagonal)
     Implements ``diag(diagonal)`` (entries with modulus 1).
 state_preparation_gates, unitary_gates, diagonal_gates
@@ -61,9 +64,14 @@ def state_preparation(state):
     return _synq.state_preparation(_np.asarray(state, dtype=complex).ravel())
 
 
-def unitary(matrix):
-    """OpenQASM 3 circuit that implements the unitary ``matrix`` (``2^n x 2^n``)."""
-    return _synq.unitary(_np.asarray(matrix, dtype=complex))
+def unitary(matrix, method="qsd"):
+    """
+    OpenQASM 3 circuit that implements the unitary ``matrix`` (``2^n x 2^n``).
+
+    ``method`` is ``"qsd"`` (quantum Shannon decomposition, default) or ``"zxz"``
+    (Block-ZXZ decomposition).
+    """
+    return _synq.unitary(_np.asarray(matrix, dtype=complex), method)
 
 
 def diagonal(diagonal):  # pylint: disable=redefined-outer-name
@@ -81,9 +89,9 @@ def state_preparation_gates(state):
     return _synq.state_preparation_gates(_np.asarray(state, dtype=complex).ravel())
 
 
-def unitary_gates(matrix):
-    """Gate list (types, qubits, angles, global_phase) that implements ``matrix``."""
-    return _synq.unitary_gates(_np.asarray(matrix, dtype=complex))
+def unitary_gates(matrix, method="qsd"):
+    """Gate list (types, qubits, angles, global_phase) that implements ``matrix`` (see ``unitary``)."""
+    return _synq.unitary_gates(_np.asarray(matrix, dtype=complex), method)
 
 
 def diagonal_gates(diagonal):  # pylint: disable=redefined-outer-name

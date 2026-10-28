@@ -196,6 +196,34 @@ def test_unitary_two_qubit_gate_count(n, expected):
     assert np.count_nonzero(types >= synq.CX) == expected
 
 
+@pytest.mark.parametrize("n,expected", [(2, 3), (3, 19), (4, 95), (5, 423)])
+def test_zxz_two_qubit_gate_count(n, expected):
+    """Block-ZXZ with A.2: one CNOT less per decomposition step than the QSD."""
+    types, _, _, _ = synq.unitary_gates(random_unitary(2**n, rng), method="zxz")
+    assert np.count_nonzero((types == synq.CX) | (types == synq.CZ)) == expected
+
+
+@pytest.mark.parametrize("n", range(1, 5))
+def test_zxz_unitary(n):
+    for u in _structured(n):
+        qasm = synq.unitary(u, method="zxz")
+        assert np.allclose(operator(qasm), u, atol=1e-10)
+        assert_same_circuit(qasm, synq.unitary_gates(u, method="zxz"))
+    u = random_unitary(2**n, rng)
+    out = np.column_stack([simulate_gates(synq.unitary_gates(u, "zxz"), c) for c in np.eye(2**n)])
+    assert np.allclose(out, u, atol=1e-10)
+
+
+def test_unitary_method():
+    u = random_unitary(8, rng)
+    assert synq.unitary(u) == synq.unitary(u, method="qsd")
+    assert "h q[" in synq.unitary(u, method="zxz")
+    assert "h q[" not in synq.unitary(u)
+    for function in (synq.unitary, synq.unitary_gates):
+        with pytest.raises(ValueError, match="method"):
+            function(u, method="csd")
+
+
 def test_gate_type_constants():
     assert (synq.RZ, synq.RY, synq.P, synq.CX, synq.CZ, synq.H) == (0, 1, 2, 3, 4, 5)
 

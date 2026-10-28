@@ -7,7 +7,7 @@ SynQ builds an abstract syntax tree for the decomposition and emits OpenQASM 3 t
 | Function | Method |
 |---|---|
 | state preparation | uniformly controlled RY/RZ rotations (Möttönen et al.) |
-| unitary | cosine-sine + quantum Shannon decomposition with optimizations A.1 and A.2 of Shende, Bullock and Markov: (23/48)·4ⁿ − (3/2)·2ⁿ + 4/3 two-qubit gates (20, 100, 444, 1868 for n = 3…6) |
+| unitary | cosine-sine + quantum Shannon decomposition with optimizations A.1 and A.2 of Shende, Bullock and Markov: (23/48)·4ⁿ − (3/2)·2ⁿ + 4/3 two-qubit gates (20, 100, 444, 1868 for n = 3…6); or the Block-ZXZ decomposition of Krol and Al-Ars with A.2 (19, 95, 423, 1783) |
 | diagonal gate | recursive uniformly controlled RZ rotations |
 
 The circuits use the Qiskit (little-endian) qubit order: qubit 0 is the least significant bit. They implement the target exactly, including the global phase.
@@ -45,6 +45,7 @@ import synq
 
 qasm = synq.state_preparation(np.array([1, 1j, -1, 0]) / np.sqrt(3))
 qasm = synq.unitary(matrix)         # 2^n x 2^n unitary
+qasm = synq.unitary(matrix, method="zxz")   # Block-ZXZ instead of the QSD
 qasm = synq.diagonal(phases)        # entries with modulus 1
 
 types, qubits, angles, phase = synq.unitary_gates(matrix)   # same circuit as arrays
