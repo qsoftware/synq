@@ -72,10 +72,14 @@ void qasmVisitor::visit(firstUcrzNode &node) {
         control = gate_synthesis ? (node.get_num_qubits() - 2) : (target - node.get_num_qubits() + 1);
     }
 
+    // A "first" node starts a multiplexor: its children have no inherited reversal.
+    const bool saved_context = reverse_context;
+    reverse_context = false;
     node.gate1->accept(*this);
     emit_two_qubit(node.use_cz ? CZ : CX, control, target);
     node.gate2->accept(*this);
     emit_two_qubit(node.use_cz ? CZ : CX, control, target);
+    reverse_context = saved_context;
 }
 
 
@@ -93,14 +97,20 @@ void qasmVisitor::visit(ucrzNode &node) {
     }
 
    
-    if (node.reverse_gate) {
-        node.gate1->reverse_gate = !node.gate1->reverse_gate;
-        node.gate2->reverse_gate = !node.gate2->reverse_gate;
-        std::swap(node.gate1, node.gate2);
-    }
-    node.gate1->accept(*this);
+    // The node is reversed if its flag differs from the reversal inherited from its
+    // parent; a reversed node visits gate2 before gate1. This used to be done by
+    // swapping gate1/gate2 and toggling the children's flags in the tree, so a second
+    // visit of the same tree produced a different (wrong) circuit. The reversal is now
+    // visitor state passed down the recursion, and the tree is not modified.
+    const bool reversed = node.reverse_gate != reverse_context;
+    IASTnode& first = reversed ? *node.gate2 : *node.gate1;
+    IASTnode& second = reversed ? *node.gate1 : *node.gate2;
+    const bool saved_context = reverse_context;
+    reverse_context = reversed;  // the children's flags are relative to this node
+    first.accept(*this);
     emit_two_qubit(node.use_cz ? CZ : CX, control, target);
-    node.gate2->accept(*this);
+    second.accept(*this);
+    reverse_context = saved_context;
 }
 
 void qasmVisitor::visit(ryNode &node)
@@ -138,12 +148,16 @@ void qasmVisitor::visit(firstUcryNode &node) {
     }
 
 
+    // A "first" node starts a multiplexor: its children have no inherited reversal.
+    const bool saved_context = reverse_context;
+    reverse_context = false;
     node.gate1->accept(*this);
     emit_two_qubit(node.use_cz ? CZ : CX, control, target);
     node.gate2->accept(*this);
     if (!node.drop_last) {  // A.1: the caller absorbed this gate
         emit_two_qubit(node.use_cz ? CZ : CX, control, target);
     }
+    reverse_context = saved_context;
 }
 
 void qasmVisitor::visit(ucryNode &node) {
@@ -164,14 +178,20 @@ void qasmVisitor::visit(ucryNode &node) {
         control = gate_synthesis ? (node.get_num_qubits() - 2) : (target - node.get_num_qubits() + 1);
     }
 
-    if (node.reverse_gate) {
-        node.gate1->reverse_gate = !node.gate1->reverse_gate;
-        node.gate2->reverse_gate = !node.gate2->reverse_gate;
-        std::swap(node.gate1, node.gate2);
-    }
-    node.gate1->accept(*this);
+    // The node is reversed if its flag differs from the reversal inherited from its
+    // parent; a reversed node visits gate2 before gate1. This used to be done by
+    // swapping gate1/gate2 and toggling the children's flags in the tree, so a second
+    // visit of the same tree produced a different (wrong) circuit. The reversal is now
+    // visitor state passed down the recursion, and the tree is not modified.
+    const bool reversed = node.reverse_gate != reverse_context;
+    IASTnode& first = reversed ? *node.gate2 : *node.gate1;
+    IASTnode& second = reversed ? *node.gate1 : *node.gate2;
+    const bool saved_context = reverse_context;
+    reverse_context = reversed;  // the children's flags are relative to this node
+    first.accept(*this);
     emit_two_qubit(node.use_cz ? CZ : CX, control, target);
-    node.gate2->accept(*this);
+    second.accept(*this);
+    reverse_context = saved_context;
 }
 
 void qasmVisitor::visit(UCRotationNode &node) {

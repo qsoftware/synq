@@ -138,6 +138,9 @@ public:
     void visit(oneQubitDiagonalGateNode &node) override;
 
 private:
+    /** Reversal inherited from the parent UCR node (replaces modifying the tree). */
+    bool reverse_context = false;
+
     void emit_rotation(gateType type, int qubit, double angle);
     void emit_two_qubit(gateType type, int control, int target);
     void emit_gphase(double angle);

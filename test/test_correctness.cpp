@@ -426,6 +426,46 @@ TEST(CorrectnessTwoQubit, TwoCxUpToDiagonal) {
 }
 
 // ---------------------------------------------------------------------------
+// The visitor must not modify the tree: visiting it again gives the same circuit
+// ---------------------------------------------------------------------------
+
+namespace {
+
+std::string visit_qasm(IASTnode& node, int n) {
+    qasmVisitor visitor(n);
+    node.accept(visitor);
+    return visitor.qasm_code;
+}
+
+}  // namespace
+
+TEST(CorrectnessVisitor, VisitingTwiceGivesTheSameCorrectCircuit) {
+    for (Eigen::Index dim = 4; dim <= 32; dim *= 2) {
+        const int n = qubits_of(dim);
+
+        const Eigen::MatrixXcd u = random_unitary(dim);
+        unitaryGateNode unitary_node(u);
+        const std::string first = visit_qasm(unitary_node, n);
+        const std::string second = visit_qasm(unitary_node, n);
+        EXPECT_EQ(first, second) << "unitary, " << n << " qubits";
+        EXPECT_LT((operator_of(second, dim) - u).cwiseAbs().maxCoeff(), kTolerance) << "unitary, " << n << " qubits";
+
+        const Eigen::VectorXcd d = random_phases(dim);
+        diagonalGateNode diagonal_node(d.asDiagonal().toDenseMatrix());
+        EXPECT_EQ(visit_qasm(diagonal_node, n), visit_qasm(diagonal_node, n)) << "diagonal, " << n << " qubits";
+
+        const Eigen::VectorXcd v = random_state(dim);
+        std::vector<cd> state(v.data(), v.data() + v.size());
+        qspUcrNode state_node(&state);
+        const std::string first_state = visit_qasm(state_node, n);
+        const std::string second_state = visit_qasm(state_node, n);
+        EXPECT_EQ(first_state, second_state) << "state, " << n << " qubits";
+        EXPECT_LT((simulate(second_state, Eigen::VectorXcd::Unit(dim, 0)) - v).cwiseAbs().maxCoeff(), kTolerance)
+            << "state, " << n << " qubits";
+    }
+}
+
+// ---------------------------------------------------------------------------
 // Output precision
 // ---------------------------------------------------------------------------
 
