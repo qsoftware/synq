@@ -33,7 +33,7 @@ public:
      * @param gate1 First unitary matrix.
      * @param gate2 Second unitary matrix.
      */
-    explicit qsdNode(const Eigen::MatrixXcd& gate1, const Eigen::MatrixXcd& gate2);
+    explicit qsdNode(const Eigen::MatrixXcd& gate1, const Eigen::MatrixXcd& gate2, bool defer_two_qubit = false);
     
     /**
     * @brief Accept a visitor according to the Visitor pattern.
@@ -70,6 +70,9 @@ private:
      * @return std::unique_ptr<IASTnode> Newly created unitaryGate node.
      */
     std::unique_ptr<unitaryGateNode> createUnitary(const Eigen::MatrixXcd& matrix);
+
+    /** Passed to the unitary children (see unitaryGateNode). */
+    bool m_defer_two_qubit = false;
     /**
      * @brief Factory method to create a unique pointer to an Ucrz node.
      *

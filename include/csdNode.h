@@ -34,7 +34,7 @@ public:
      * 
      * @param matrix Unitary matrix that will be decomposed.
      */
-    explicit csdNode(const Eigen::MatrixXcd& matrix);
+    explicit csdNode(const Eigen::MatrixXcd& matrix, bool defer_two_qubit = false);
 
     /**
      * @brief Accept a visitor according to the Visitor pattern.
@@ -72,6 +72,9 @@ private:
      * @return std::unique_ptr<qsdNode> Newly crated QSD node wrapping both blocks.
      */
     std::unique_ptr<qsdNode> createQSD(const Eigen::MatrixXcd& gate1, const Eigen::MatrixXcd& gate2);
+
+    /** Passed to the QSD children: two-qubit blocks are synthesized later by the root's A.2 pass. */
+    bool m_defer_two_qubit = false;
     /**
      * @brief Factory method to create a unique pointer to an Ucry node.
      * 

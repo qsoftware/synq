@@ -379,6 +379,24 @@ TEST(CorrectnessUnitary, TwoQubitGateCountWithA1A2) {
     }
 }
 
+TEST(CorrectnessUnitary, WithoutA2EveryBlockUsesThreeCnots) {
+    // optimize = false: no A.2 pass, every two-qubit block is synthesized with three
+    // CNOTs when the tree is built (only A.1 applies): 23 and 115 two-qubit gates.
+    const std::pair<int, std::size_t> expected[] = {{3, 23}, {4, 115}};
+    for (const auto& [n, count] : expected) {
+        const Eigen::MatrixXcd u = random_unitary(Eigen::Index(1) << n);
+        unitaryGateNode node(u, false);
+        qasmVisitor visitor(n, false);
+        node.accept(visitor);
+        std::size_t two_qubit = 0;
+        for (const auto& gate : visitor.gates) two_qubit += (gate.type >= qasmVisitor::CX);
+        EXPECT_EQ(two_qubit, count) << n << " qubits";
+        qasmVisitor text(n);
+        node.accept(text);
+        EXPECT_LT((operator_of(text.qasm_code, u.rows()) - u).cwiseAbs().maxCoeff(), kTolerance) << n << " qubits";
+    }
+}
+
 // ---------------------------------------------------------------------------
 // A.2 building block: U = D * V, D diagonal, V with two CNOTs
 // ---------------------------------------------------------------------------

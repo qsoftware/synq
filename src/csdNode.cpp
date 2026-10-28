@@ -8,7 +8,8 @@
 #include "../include/qsdNode.h"
 #include "../include/ucryNode.h"    
 
-csdNode::csdNode(const Eigen::MatrixXcd& matrix) : m_matrix(matrix) {
+csdNode::csdNode(const Eigen::MatrixXcd& matrix, bool defer_two_qubit)
+    : m_defer_two_qubit(defer_two_qubit), m_matrix(matrix) {
     auto csdValues = csd(matrix, matrix.rows() / 2, matrix.cols() / 2);
     // Optimization A.1 (Shende, Bullock, Markov 2006): the RY multiplexor is built
     // with CZs and its last CZ is omitted. That CZ acts on the select qubit (MSB)
@@ -28,7 +29,7 @@ csdNode::csdNode(const Eigen::MatrixXcd& matrix) : m_matrix(matrix) {
 }
 
 std::unique_ptr<qsdNode> csdNode::createQSD(const Eigen::MatrixXcd& gate1, const Eigen::MatrixXcd& gate2) {
-    return std::make_unique<qsdNode>(gate1, gate2);
+    return std::make_unique<qsdNode>(gate1, gate2, m_defer_two_qubit);
 }
 
 std::unique_ptr<ucryNode> csdNode::createUcry(const std::vector<double>& angles) {

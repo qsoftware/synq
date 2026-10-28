@@ -62,8 +62,12 @@ public:
      * @param matrix Unitary matrix to be decomposed.
      * @param optimize Apply optimization A.2 to the whole tree. Only the root does
      *        it; the internal nodes of the decomposition are created with false.
+     * @param defer_two_qubit Internal use: a two-qubit node only stores its matrix and
+     *        is synthesized later by the root's applyA2(), so that every two-qubit
+     *        block is decomposed exactly once. The root sets it for its descendants
+     *        when it applies A.2; after the root's constructor the tree is complete.
      */
-    explicit unitaryGateNode(const Eigen::MatrixXcd& matrix, bool optimize = true);
+    explicit unitaryGateNode(const Eigen::MatrixXcd& matrix, bool optimize = true, bool defer_two_qubit = false);
     void accept(nodeVisitor &visitor) override;
     return_type get_data() override;
     std::unique_ptr<IASTnode> csd;
@@ -72,6 +76,8 @@ public:
 
 private:    
     Eigen::MatrixXcd data;
+    /** Children of this node defer their two-qubit blocks to the root's applyA2(). */
+    bool defer_children = false;
     static int index;
     int name;
 

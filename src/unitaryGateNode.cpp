@@ -15,7 +15,7 @@
 
 int unitaryGateNode::index = 0;
 
-unitaryGateNode::unitaryGateNode(const Eigen::MatrixXcd& matrix, bool optimize) : data(matrix) {
+unitaryGateNode::unitaryGateNode(const Eigen::MatrixXcd& matrix, bool optimize, bool defer_two_qubit) : data(matrix) {
 
     if (matrix.size() == 0 || matrix.rows() != matrix.cols()) {
         throw std::invalid_argument("Matrix must be square and non-empty");
@@ -31,8 +31,14 @@ unitaryGateNode::unitaryGateNode(const Eigen::MatrixXcd& matrix, bool optimize) 
 
     num_qubits = static_cast<int>(log2(static_cast<double>(matrix.rows())));
     name = index++;
+    const bool apply_a2 = optimize && num_qubits > 2;
+    // With A.2, every two-qubit block below this node is synthesized once, by applyA2().
+    defer_children = apply_a2 || defer_two_qubit;
+    if (num_qubits == 2 && defer_two_qubit) {
+        return;  // synthesized by the root's applyA2()
+    }
     init();
-    if (optimize && num_qubits > 2) {
+    if (apply_a2) {
         applyA2();
     }
 }
@@ -61,7 +67,6 @@ void unitaryGateNode::applyA2() {
      */
     std::vector<unitaryGateNode*> leaves;
     collectTwoQubitLeaves(leaves);
-    if (leaves.size() < 2) return;
 
     Eigen::Matrix4cd carry = Eigen::Matrix4cd::Identity();
     for (std::size_t k = 0; k < leaves.size(); ++k) {
@@ -132,7 +137,7 @@ return_type unitaryOneQubitGateNode::get_data() {
 }
 
 std::unique_ptr<IASTnode> unitaryGateNode::createCSD(const Eigen::MatrixXcd& matrix) {
-    return std::make_unique<csdNode>(matrix);
+    return std::make_unique<csdNode>(matrix, defer_children);
 }
 
 std::unique_ptr<IASTnode> unitaryGateNode::createBaseUnitary(const Eigen::MatrixXcd& matrix, int position) {
