@@ -87,6 +87,7 @@ add_library(synq
         include/twoQubitsUnitary.h
         src/diagonalGateNode.cpp
         include/diagonalGateNode.h
+        include/synthesisOptions.h
 )
 
 # The static library is linked into the Python extension, so it must be PIC.

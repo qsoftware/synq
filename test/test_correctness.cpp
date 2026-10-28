@@ -25,6 +25,7 @@
 #include "../include/qspUcrNode.h"
 #include "../include/unitaryGateNode.h"
 #include "../include/twoQubitsUnitary.h"
+#include "../include/synthesisOptions.h"
 
 namespace {
 
@@ -395,6 +396,30 @@ TEST(CorrectnessUnitary, WithoutA2EveryBlockUsesThreeCnots) {
         node.accept(text);
         EXPECT_LT((operator_of(text.qasm_code, u.rows()) - u).cwiseAbs().maxCoeff(), kTolerance) << n << " qubits";
     }
+}
+
+// ---------------------------------------------------------------------------
+// Synthesis options
+// ---------------------------------------------------------------------------
+
+TEST(CorrectnessUnitary, SynthesisOptions) {
+    const Eigen::MatrixXcd u = random_unitary(16);
+    const auto qasm_of = [](unitaryGateNode& node) {
+        qasmVisitor visitor(4);
+        node.accept(visitor);
+        return visitor.qasm_code;
+    };
+    unitaryGateNode plain(u);
+    unitaryGateNode defaults(u, synthesisOptions{});
+    unitaryGateNode explicit_qsd(u, synthesisOptions{.method = unitaryDecomposition::QSD, .a2 = true});
+    EXPECT_EQ(qasm_of(plain), qasm_of(defaults));
+    EXPECT_EQ(qasm_of(plain), qasm_of(explicit_qsd));
+
+    unitaryGateNode no_a2(u, synthesisOptions{.a2 = false});
+    unitaryGateNode no_a2_bool(u, false);
+    EXPECT_EQ(qasm_of(no_a2), qasm_of(no_a2_bool));
+    EXPECT_NE(qasm_of(no_a2), qasm_of(plain));
+    EXPECT_LT((operator_of(qasm_of(no_a2), 16) - u).cwiseAbs().maxCoeff(), kTolerance);
 }
 
 // ---------------------------------------------------------------------------

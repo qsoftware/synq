@@ -43,6 +43,10 @@ unitaryGateNode::unitaryGateNode(const Eigen::MatrixXcd& matrix, bool optimize, 
     }
 }
 
+unitaryGateNode::unitaryGateNode(const Eigen::MatrixXcd& matrix, const synthesisOptions& options)
+    : unitaryGateNode(matrix, options.a2) {
+}
+
 void unitaryGateNode::collectTwoQubitLeaves(std::vector<unitaryGateNode*>& leaves) {
     // Same (time) order as qasmVisitor: csd -> qsd2, ucry, qsd1; qsd -> gate_w, ucrz, gate_v.
     if (num_qubits == 2) {

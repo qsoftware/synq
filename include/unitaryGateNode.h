@@ -8,6 +8,7 @@
 #include <memory>
 #include <vector>
 #include "one_qubit_gate.h"
+#include "synthesisOptions.h"
 
 class csdNode;
 
@@ -68,6 +69,14 @@ public:
      *        when it applies A.2; after the root's constructor the tree is complete.
      */
     explicit unitaryGateNode(const Eigen::MatrixXcd& matrix, bool optimize = true, bool defer_two_qubit = false);
+
+    /**
+     * @brief Decomposes a unitary matrix with the given options (this node is the root).
+     *
+     * Same as unitaryGateNode(matrix, options.a2). Only unitaryDecomposition::QSD is
+     * available for now.
+     */
+    unitaryGateNode(const Eigen::MatrixXcd& matrix, const synthesisOptions& options);
     void accept(nodeVisitor &visitor) override;
     return_type get_data() override;
     std::unique_ptr<IASTnode> csd;
