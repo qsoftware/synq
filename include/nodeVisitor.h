@@ -21,6 +21,7 @@
 #include "csdNode.h"
 #include "qsdNode.h"
 #include "unitaryGateNode.h"
+#include "hNode.h"
 class diagonalGateNode;
 class oneQubitDiagonalGateNode;
 
@@ -31,6 +32,7 @@ public:
     virtual void visit(ucrzNode &node) = 0;
     virtual void visit(firstUcrzNode &node) = 0;
     virtual void visit(ryNode &node) = 0;
+    virtual void visit(hNode &node) = 0;
     virtual void visit(ucryNode &node) = 0;
     virtual void visit(firstUcryNode &node) = 0;
     virtual void visit(UCRotationNode &node) = 0;
@@ -87,7 +89,8 @@ struct return_type_visitor {
  * @brief A gate of the synthesized circuit (used when the visitor records gates).
  *
  * type: 0 = rz, 1 = ry, 2 = p (q0 = target, q1 = -1, angle),
- *       3 = cx, 4 = cz (q0 = control, q1 = target).
+ *       3 = cx, 4 = cz (q0 = control, q1 = target),
+ *       5 = h (q0 = target, q1 = -1, angle = 0).
  */
 struct circuitGate {
     std::uint8_t type;
@@ -104,7 +107,7 @@ struct circuitGate {
  */
 class qasmVisitor : public nodeVisitor {
 public:
-    enum gateType : std::uint8_t { RZ = 0, RY = 1, P = 2, CX = 3, CZ = 4 };
+    enum gateType : std::uint8_t { RZ = 0, RY = 1, P = 2, CX = 3, CZ = 4, H = 5 };
 
     std::string qasm_code;
     int _num_qubits;
@@ -125,6 +128,7 @@ public:
     void visit(firstUcrzNode &node) override;
     void visit(ucrzNode &node) override;
     void visit(ryNode &node) override;
+    void visit(hNode &node) override;
     void visit(firstUcryNode &node) override;
     void visit(ucryNode &node) override;
     void visit(UCRotationNode &node) override;
@@ -143,5 +147,6 @@ private:
 
     void emit_rotation(gateType type, int qubit, double angle);
     void emit_two_qubit(gateType type, int control, int target);
+    void emit_h(int qubit);
     void emit_gphase(double angle);
 };

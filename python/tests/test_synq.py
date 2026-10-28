@@ -16,6 +16,8 @@ import synq
 _ROT = re.compile(r"^(rz|ry|p)\(([^)]+)\) q\[(\d+)\];$")
 _CX = re.compile(r"^(cx|cz) q\[(\d+)\], q\[(\d+)\];$")
 _GPHASE = re.compile(r"^gphase\(([^)]+)\);$")
+_H = re.compile(r"^h q\[(\d+)\];$")
+_HADAMARD = np.array([[1, 1], [1, -1]], dtype=complex) / np.sqrt(2)
 
 
 def _one_qubit(name, theta):
@@ -57,6 +59,8 @@ def simulate(qasm, state):
             state = apply(state, int(m[2]), int(m[3]))
         elif m := _GPHASE.match(line):
             state = state * np.exp(1j * float(m[1]))
+        elif m := _H.match(line):
+            state = _apply_1q(state, _HADAMARD, int(m[1]), n)
         elif line and not line.startswith(("OPENQASM", "include", "qubit")):
             raise ValueError(f"unexpected line {line!r}")
     return state
@@ -125,6 +129,8 @@ def qasm_to_gates(qasm):
             qubits.append((int(m[2]), int(m[3]))); angles.append(0.0)
         elif m := _GPHASE.match(line):
             phase += float(m[1])
+        elif m := _H.match(line):
+            types.append(synq.H); qubits.append((int(m[1]), -1)); angles.append(0.0)
     return types, qubits, angles, phase
 
 
@@ -160,8 +166,10 @@ def simulate_gates(gates, state):
             state = _apply_1q(state, _one_qubit(names[gate], angle), q0, n)
         elif gate == synq.CX:
             state = _apply_cx(state, q0, q1)
-        else:
+        elif gate == synq.CZ:
             state = _apply_cz(state, q0, q1)
+        else:
+            state = _apply_1q(state, _HADAMARD, q0, n)
     return state
 
 
@@ -186,6 +194,21 @@ def test_unitary_two_qubit_gate_count(n, expected):
     """Optimizations A.1 and A.2: (23/48) 4^n - (3/2) 2^n + 4/3 two-qubit gates for n >= 3."""
     types, _, _, _ = synq.unitary_gates(random_unitary(2**n, rng))
     assert np.count_nonzero(types >= synq.CX) == expected
+
+
+def test_gate_type_constants():
+    assert (synq.RZ, synq.RY, synq.P, synq.CX, synq.CZ, synq.H) == (0, 1, 2, 3, 4, 5)
+
+
+def test_simulators_handle_hadamard():
+    # the test simulators used above must understand h (emitted by Block-ZXZ)
+    qasm = 'OPENQASM 3.0;\ninclude "stdgates.inc";\n\nqubit[2] q; \nh q[1];\n'
+    expected = np.kron(_HADAMARD, np.eye(2))
+    assert np.allclose(operator(qasm), expected)
+    gates = (np.array([synq.H], np.uint8), np.array([[1, -1]], np.int32), np.array([0.0]), 0.0)
+    out = np.column_stack([simulate_gates(gates, c) for c in np.eye(4)])
+    assert np.allclose(out, expected)
+    assert_same_circuit(qasm, gates)
 
 
 def test_toffoli():

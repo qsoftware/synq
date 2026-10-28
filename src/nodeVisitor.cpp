@@ -34,6 +34,18 @@ void qasmVisitor::emit_two_qubit(const gateType type, const int control, const i
     qasm_code += std::string(type == CZ ? "cz" : "cx") + " q[" + std::to_string(control) + "], q[" + std::to_string(target) + "];\n";
 }
 
+void qasmVisitor::emit_h(const int qubit) {
+    if (!emit_qasm) {
+        gates.push_back({H, qubit, -1, 0.0});
+        return;
+    }
+    qasm_code += "h q[" + std::to_string(qubit) + "];\n";
+}
+
+void qasmVisitor::visit(hNode &node) {
+    emit_h(node.position);
+}
+
 void qasmVisitor::emit_gphase(const double angle) {
     if (!emit_qasm) {
         total_phase += angle;

@@ -39,7 +39,7 @@ int num_qubits_from_size(std::size_t size, const char* what) {
 /**
  * Converts the gates recorded by a qasmVisitor into numpy arrays:
  * (types uint8[N], qubits int32[N, 2], angles float64[N], global_phase float).
- * Gate types: 0 rz, 1 ry, 2 p, 3 cx, 4 cz. Single-qubit gates have qubits[k, 1] == -1;
+ * Gate types: 0 rz, 1 ry, 2 p, 3 cx, 4 cz, 5 h. Single-qubit gates have qubits[k, 1] == -1;
  * two-qubit gates store (control, target).
  */
 py::tuple to_arrays(const qasmVisitor& visitor) {
@@ -145,7 +145,7 @@ PYBIND11_MODULE(_synq, m) {
     const char* gates_doc =
         "Same as the QASM function, but returns the gates as numpy arrays: "
         "(types uint8[N], qubits int32[N, 2], angles float64[N], global_phase). "
-        "Types: 0 rz, 1 ry, 2 p, 3 cx, 4 cz; single-qubit gates have qubits[k, 1] == -1, "
+        "Types: 0 rz, 1 ry, 2 p, 3 cx, 4 cz, 5 h; single-qubit gates have qubits[k, 1] == -1, "
         "two-qubit gates store (control, target).";
     m.def("state_preparation_gates", &state_preparation_gates, py::arg("state"), gates_doc);
     m.def("unitary_gates", &unitary_gates, py::arg("matrix"), gates_doc);

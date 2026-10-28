@@ -26,6 +26,7 @@
 #include "../include/unitaryGateNode.h"
 #include "../include/twoQubitsUnitary.h"
 #include "../include/synthesisOptions.h"
+#include "../include/hNode.h"
 
 namespace {
 
@@ -95,6 +96,10 @@ Eigen::VectorXcd simulate(const std::string& qasm, Eigen::VectorXcd state) {
             const int control = parse_index(line, 0);
             const int target = parse_index(line, line.find(','));
             apply_2q(state, line[1] == 'z', control, target);
+        } else if (line.rfind("h ", 0) == 0) {
+            Eigen::Matrix2cd h;
+            h << 1.0, 1.0, 1.0, -1.0;
+            apply_1q(state, h / std::sqrt(2.0), parse_index(line, 0));
         } else {
             throw std::runtime_error("unexpected QASM line: " + line);
         }
@@ -307,6 +312,8 @@ std::pair<std::vector<circuitGate>, double> qasm_to_gates(const std::string& qas
         } else if (line.rfind("cx", 0) == 0 || line.rfind("cz", 0) == 0) {
             const auto type = line[1] == 'z' ? qasmVisitor::CZ : qasmVisitor::CX;
             gates.push_back({type, parse_index(line, 0), parse_index(line, line.find(',')), 0.0});
+        } else if (line.rfind("h ", 0) == 0) {
+            gates.push_back({qasmVisitor::H, parse_index(line, 0), -1, 0.0});
         }
     }
     return {gates, phase};
@@ -395,6 +402,34 @@ TEST(CorrectnessUnitary, WithoutA2EveryBlockUsesThreeCnots) {
         qasmVisitor text(n);
         node.accept(text);
         EXPECT_LT((operator_of(text.qasm_code, u.rows()) - u).cwiseAbs().maxCoeff(), kTolerance) << n << " qubits";
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Hadamard gate (used by the Block-ZXZ decomposition)
+// ---------------------------------------------------------------------------
+
+TEST(CorrectnessGates, Hadamard) {
+    for (int qubit = 0; qubit < 3; ++qubit) {
+        hNode node(qubit);
+        qasmVisitor text(3);
+        node.accept(text);
+        EXPECT_NE(text.qasm_code.find("h q[" + std::to_string(qubit) + "];"), std::string::npos);
+
+        qasmVisitor list(3, false);
+        node.accept(list);
+        ASSERT_EQ(list.gates.size(), 1u);
+        EXPECT_EQ(list.gates[0].type, qasmVisitor::H);
+        EXPECT_EQ(list.gates[0].q0, qubit);
+        EXPECT_EQ(list.gates[0].q1, -1);
+
+        // the simulated QASM is H on that qubit (little-endian), I elsewhere
+        Eigen::Matrix2cd h;
+        h << 1.0, 1.0, 1.0, -1.0;
+        h /= std::sqrt(2.0);
+        const Eigen::Matrix2cd i2 = Eigen::Matrix2cd::Identity();
+        const Eigen::MatrixXcd expected = kron(qubit == 2 ? h : i2, kron(qubit == 1 ? h : i2, qubit == 0 ? h : i2));
+        EXPECT_LT((operator_of(text.qasm_code, 8) - expected).cwiseAbs().maxCoeff(), 1e-15);
     }
 }
 

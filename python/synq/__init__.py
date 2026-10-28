@@ -3,7 +3,7 @@ SynQ: quantum circuit synthesis.
 
 Python interface to the SynQ C++ library. ``state_preparation``, ``unitary``
 and ``diagonal`` return an OpenQASM 3 program (``str``) using only the gates
-``rz``, ``ry``, ``p``, ``cx``, ``cz`` and ``gphase``. The ``*_gates`` variants return
+``rz``, ``ry``, ``p``, ``cx``, ``cz``, ``h`` and ``gphase``. The ``*_gates`` variants return
 the same circuit as numpy arrays, which avoids formatting and parsing text.
 
 Functions
@@ -72,8 +72,8 @@ def diagonal(diagonal):  # pylint: disable=redefined-outer-name
 
 
 # Gate-list variants: return (types, qubits, angles, global_phase) as numpy arrays.
-# types: 0 rz, 1 ry, 2 p, 3 cx, 4 cz; qubits[k] = (target, -1) or (control, target).
-RZ, RY, P, CX, CZ = 0, 1, 2, 3, 4
+# types: 0 rz, 1 ry, 2 p, 3 cx, 4 cz, 5 h; qubits[k] = (target, -1) or (control, target).
+RZ, RY, P, CX, CZ, H = 0, 1, 2, 3, 4, 5
 
 
 def state_preparation_gates(state):
@@ -94,5 +94,5 @@ def diagonal_gates(diagonal):  # pylint: disable=redefined-outer-name
 __all__ = [
     "state_preparation", "unitary", "diagonal",
     "state_preparation_gates", "unitary_gates", "diagonal_gates",
-    "RZ", "RY", "P", "CX", "CZ", "__version__",
+    "RZ", "RY", "P", "CX", "CZ", "H", "__version__",
 ]

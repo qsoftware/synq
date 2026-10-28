@@ -88,6 +88,8 @@ add_library(synq
         src/diagonalGateNode.cpp
         include/diagonalGateNode.h
         include/synthesisOptions.h
+        src/hNode.cpp
+        include/hNode.h
 )
 
 # The static library is linked into the Python extension, so it must be PIC.
