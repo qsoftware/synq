@@ -13,7 +13,9 @@
 #include <random>
 #include <sstream>
 #include <stdexcept>
+#include <memory>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include <Eigen/Dense>
@@ -279,6 +281,70 @@ TEST(CorrectnessDiagonal, RandomPhases) {
         const Eigen::VectorXcd d = random_phases(dim);
         const double error = (operator_of(synthesize_diagonal(d), dim) - Eigen::MatrixXcd(d.asDiagonal())).cwiseAbs().maxCoeff();
         EXPECT_LT(error, kTolerance) << qubits_of(dim) << " qubits";
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Gate-list output: same circuit as the QASM text, gate by gate
+// ---------------------------------------------------------------------------
+
+namespace {
+
+// Parses the QASM text into the representation recorded by qasmVisitor(n, false).
+std::pair<std::vector<circuitGate>, double> qasm_to_gates(const std::string& qasm) {
+    std::vector<circuitGate> gates;
+    double phase = 0.0;
+    std::istringstream stream(qasm);
+    std::string line;
+    while (std::getline(stream, line)) {
+        if (line.rfind("gphase", 0) == 0) {
+            phase += parse_angle(line);
+        } else if (line.rfind("rz", 0) == 0 || line.rfind("ry", 0) == 0 || line.rfind("p(", 0) == 0) {
+            const auto type = line[0] == 'p' ? qasmVisitor::P : (line[1] == 'z' ? qasmVisitor::RZ : qasmVisitor::RY);
+            gates.push_back({type, parse_index(line, line.find(')')), -1, parse_angle(line)});
+        } else if (line.rfind("cx", 0) == 0) {
+            gates.push_back({qasmVisitor::CX, parse_index(line, 0), parse_index(line, line.find(',')), 0.0});
+        }
+    }
+    return {gates, phase};
+}
+
+template <typename MakeNode>
+void expect_same_circuit(MakeNode make_node, int n, const std::string& name) {
+    auto text_node = make_node();
+    qasmVisitor text(n);
+    text_node->accept(text);
+
+    auto list_node = make_node();  // the visitor modifies the tree: use a fresh one
+    qasmVisitor list(n, false);
+    list_node->accept(list);
+
+    const auto [expected, phase] = qasm_to_gates(text.qasm_code);
+    ASSERT_EQ(list.gates.size(), expected.size()) << name;
+    for (std::size_t k = 0; k < expected.size(); ++k) {
+        EXPECT_EQ(list.gates[k].type, expected[k].type) << name << " gate " << k;
+        EXPECT_EQ(list.gates[k].q0, expected[k].q0) << name << " gate " << k;
+        EXPECT_EQ(list.gates[k].q1, expected[k].q1) << name << " gate " << k;
+        // exact: the QASM text prints angles with max_digits10 digits
+        EXPECT_EQ(list.gates[k].angle, expected[k].angle) << name << " gate " << k;
+    }
+    EXPECT_NEAR(list.total_phase, phase, 1e-15) << name;
+}
+
+}  // namespace
+
+TEST(CorrectnessGateList, SameCircuitAsQasm) {
+    for (Eigen::Index dim = 2; dim <= 16; dim *= 2) {
+        const int n = qubits_of(dim);
+        const Eigen::MatrixXcd u = random_unitary(dim);
+        expect_same_circuit([&] { return std::make_unique<unitaryGateNode>(u); }, n, "unitary");
+
+        const Eigen::MatrixXcd d = random_phases(dim).asDiagonal().toDenseMatrix();
+        expect_same_circuit([&] { return std::make_unique<diagonalGateNode>(d); }, n, "diagonal");
+
+        const Eigen::VectorXcd v = random_state(dim);
+        std::vector<cd> state(v.data(), v.data() + v.size());
+        expect_same_circuit([&] { return std::make_unique<qspUcrNode>(&state); }, n, "state");
     }
 }
 

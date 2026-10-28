@@ -7,13 +7,39 @@
 #include <utility>
 #include<numbers>
 
-qasmVisitor::qasmVisitor(int num_qubits) {
+qasmVisitor::qasmVisitor(int num_qubits, bool emit_qasm) : emit_qasm(emit_qasm) {
     _num_qubits = num_qubits;
     current_msb = _num_qubits - 1;
-    qasm_code += "OPENQASM 3.0;\n";
-    qasm_code += "include \"stdgates.inc\";\n\n";
+    if (emit_qasm) {
+        qasm_code += "OPENQASM 3.0;\n";
+        qasm_code += "include \"stdgates.inc\";\n\n";
+        qasm_code += "qubit[" + std::to_string(_num_qubits) + "] q; \n";
+    }
+}
 
-    qasm_code += "qubit[" + std::to_string(_num_qubits) + "] q; \n";
+void qasmVisitor::emit_rotation(const gateType type, const int qubit, const double angle) {
+    if (!emit_qasm) {
+        gates.push_back({type, qubit, -1, angle});
+        return;
+    }
+    static const char* names[] = {"rz", "ry", "p"};
+    qasm_code += std::string(names[type]) + "(" + format_angle(angle) + ") q[" + std::to_string(qubit) + "];\n";
+}
+
+void qasmVisitor::emit_two_qubit(const gateType type, const int control, const int target) {
+    if (!emit_qasm) {
+        gates.push_back({type, control, target, 0.0});
+        return;
+    }
+    qasm_code += "cx q[" + std::to_string(control) + "], q[" + std::to_string(target) + "];\n";
+}
+
+void qasmVisitor::emit_gphase(const double angle) {
+    if (!emit_qasm) {
+        total_phase += angle;
+        return;
+    }
+    qasm_code += "gphase(" + format_angle(angle) + ");\n";
 }
 
 void qasmVisitor::visit(rzNode &node)
@@ -30,7 +56,7 @@ void qasmVisitor::visit(rzNode &node)
         }
     }
 
-    qasm_code += "rz(" + std::visit(return_type_visitor{}, node.get_data()) + ") q[" + std::to_string(target) + "];\n";
+    emit_rotation(RZ, target, std::get<double>(node.get_data()));
 }
 
 void qasmVisitor::visit(firstUcrzNode &node) {
@@ -46,11 +72,10 @@ void qasmVisitor::visit(firstUcrzNode &node) {
         control = gate_synthesis ? (node.get_num_qubits() - 2) : (target - node.get_num_qubits() + 1);
     }
 
-    std::string ctrl_not = "cx q[" + std::to_string(control) +  "], q[" + std::to_string(target) + "];\n";
     node.gate1->accept(*this);
-    qasm_code += ctrl_not;
+    emit_two_qubit(CX, control, target);
     node.gate2->accept(*this);
-    qasm_code += ctrl_not;
+    emit_two_qubit(CX, control, target);
 }
 
 
@@ -68,14 +93,13 @@ void qasmVisitor::visit(ucrzNode &node) {
     }
 
    
-    std::string ctrl_not = "cx q[" + std::to_string(control) +  "], q[" + std::to_string(target) + "];\n";
     if (node.reverse_gate) {
         node.gate1->reverse_gate = !node.gate1->reverse_gate;
         node.gate2->reverse_gate = !node.gate2->reverse_gate;
         std::swap(node.gate1, node.gate2);
     }
     node.gate1->accept(*this);
-    qasm_code += ctrl_not;
+    emit_two_qubit(CX, control, target);
     node.gate2->accept(*this);
 }
 
@@ -93,7 +117,7 @@ void qasmVisitor::visit(ryNode &node)
         }
     }
    
-    qasm_code += "ry(" + std::visit(return_type_visitor{}, node.get_data()) + ") q[" + std::to_string(target) + "];\n";
+    emit_rotation(RY, target, std::get<double>(node.get_data()));
 }
 
 void qasmVisitor::visit(firstUcryNode &node) {
@@ -114,11 +138,10 @@ void qasmVisitor::visit(firstUcryNode &node) {
     }
 
 
-    std::string ctrl_not = "cx q[" + std::to_string(control) +  "], q[" + std::to_string(target) + "];\n";
     node.gate1->accept(*this);
-    qasm_code += ctrl_not;
+    emit_two_qubit(CX, control, target);
     node.gate2->accept(*this);
-    qasm_code += ctrl_not;
+    emit_two_qubit(CX, control, target);
 }
 
 void qasmVisitor::visit(ucryNode &node) {
@@ -139,14 +162,13 @@ void qasmVisitor::visit(ucryNode &node) {
         control = gate_synthesis ? (node.get_num_qubits() - 2) : (target - node.get_num_qubits() + 1);
     }
 
-    std::string ctrl_not = "cx q[" + std::to_string(control) +  "], q[" + std::to_string(target) + "];\n";
     if (node.reverse_gate) {
         node.gate1->reverse_gate = !node.gate1->reverse_gate;
         node.gate2->reverse_gate = !node.gate2->reverse_gate;
         std::swap(node.gate1, node.gate2);
     }
     node.gate1->accept(*this);
-    qasm_code += ctrl_not;
+    emit_two_qubit(CX, control, target);
     node.gate2->accept(*this);
 }
 
@@ -155,7 +177,7 @@ void qasmVisitor::visit(UCRotationNode &node) {
 
 void qasmVisitor::visit(qspUcrNode &node) {
     if (std::abs(node.global_phase) > 1e-12) {
-        qasm_code += "gphase(" + format_angle(node.global_phase) + ");\n";
+        emit_gphase(node.global_phase);
     }
     if (node.next_qsp) {
         node.next_qsp->accept(*this);
@@ -180,7 +202,7 @@ void qasmVisitor::visit(unitaryGateNode &node) {
 
     if (node.get_num_qubits() == _num_qubits) {
         global_phase = std::fmod(global_phase, 2 * std::numbers::pi);
-        qasm_code += "gphase(" + format_angle(global_phase) + ");\n";
+        emit_gphase(global_phase);
     }
     
     current_msb = previous_msb;
@@ -221,9 +243,9 @@ void qasmVisitor::visit(diagonalGateNode &node) {
 
 void qasmVisitor::visit(oneQubitDiagonalGateNode &node) {
     if (std::abs(node.global_phase) > 1e-12) {
-        qasm_code += "gphase(" + format_angle(node.global_phase) + ");\n";
+        emit_gphase(node.global_phase);
     }
-    qasm_code += "p(" + format_angle(node.p_phase) + ") q[0];\n";
+    emit_rotation(P, 0, node.p_phase);
 }
 
 void qasmVisitor::visit(csdNode &node) {
@@ -240,9 +262,9 @@ void qasmVisitor::visit(csdNode &node) {
 
 void qasmVisitor::visit(unitaryOneQubitGateNode &node){
     global_phase += node.params.alpha;
-    qasm_code += "rz(" + format_angle(node.params.delta) + ") q[" + std::to_string(node.position) + "];\n";
-    qasm_code += "ry(" + format_angle(node.params.gamma) + ") q[" + std::to_string(node.position) + "];\n";
-    qasm_code += "rz(" + format_angle(node.params.beta) + ") q[" + std::to_string(node.position) + "];\n";
+    emit_rotation(RZ, node.position, node.params.delta);
+    emit_rotation(RY, node.position, node.params.gamma);
+    emit_rotation(RZ, node.position, node.params.beta);
 }
 
 void qasmVisitor::visit(twoQubitGateNode &node) {
@@ -253,16 +275,16 @@ void qasmVisitor::visit(twoQubitGateNode &node) {
     node.gate_c->accept(*this);
     node.gate_d->accept(*this);
 
-    qasm_code += "cx q[0], q[1];\n";
+    emit_two_qubit(CX, 0, 1);
 
     node.rz_theta->accept(*this);
     node.ry1_theta->accept(*this);
 
-    qasm_code += "cx q[1], q[0];\n";
+    emit_two_qubit(CX, 1, 0);
 
     node.ry2_theta->accept(*this);
 
-    qasm_code += "cx q[0], q[1];\n";
+    emit_two_qubit(CX, 0, 1);
 
     node.gate_a->accept(*this);
     node.gate_b->accept(*this);

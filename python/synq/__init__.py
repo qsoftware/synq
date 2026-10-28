@@ -1,9 +1,10 @@
 """
 SynQ: quantum circuit synthesis.
 
-Python interface to the SynQ C++ library. Every function returns an
-OpenQASM 3 program (``str``) using only the gates ``rz``, ``ry``, ``p``,
-``cx`` and ``gphase``.
+Python interface to the SynQ C++ library. ``state_preparation``, ``unitary``
+and ``diagonal`` return an OpenQASM 3 program (``str``) using only the gates
+``rz``, ``ry``, ``p``, ``cx`` and ``gphase``. The ``*_gates`` variants return
+the same circuit as numpy arrays, which avoids formatting and parsing text.
 
 Functions
 ---------
@@ -13,6 +14,8 @@ unitary(matrix)
     Implements a ``2^n x 2^n`` unitary matrix (cosine-sine / Shannon decomposition).
 diagonal(diagonal)
     Implements ``diag(diagonal)`` (entries with modulus 1).
+state_preparation_gates, unitary_gates, diagonal_gates
+    Same circuits as ``(types, qubits, angles, global_phase)`` numpy arrays.
 """
 
 import os as _os
@@ -68,4 +71,28 @@ def diagonal(diagonal):  # pylint: disable=redefined-outer-name
     return _synq.diagonal(_np.asarray(diagonal, dtype=complex).ravel())
 
 
-__all__ = ["state_preparation", "unitary", "diagonal", "__version__"]
+# Gate-list variants: return (types, qubits, angles, global_phase) as numpy arrays.
+# types: 0 rz, 1 ry, 2 p, 3 cx; qubits[k] = (target, -1) or (control, target).
+RZ, RY, P, CX = 0, 1, 2, 3
+
+
+def state_preparation_gates(state):
+    """Gate list (types, qubits, angles, global_phase) that prepares ``state``."""
+    return _synq.state_preparation_gates(_np.asarray(state, dtype=complex).ravel())
+
+
+def unitary_gates(matrix):
+    """Gate list (types, qubits, angles, global_phase) that implements ``matrix``."""
+    return _synq.unitary_gates(_np.asarray(matrix, dtype=complex))
+
+
+def diagonal_gates(diagonal):  # pylint: disable=redefined-outer-name
+    """Gate list (types, qubits, angles, global_phase) that implements ``diag(diagonal)``."""
+    return _synq.diagonal_gates(_np.asarray(diagonal, dtype=complex).ravel())
+
+
+__all__ = [
+    "state_preparation", "unitary", "diagonal",
+    "state_preparation_gates", "unitary_gates", "diagonal_gates",
+    "RZ", "RY", "P", "CX", "__version__",
+]

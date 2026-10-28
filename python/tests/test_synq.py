@@ -106,6 +106,71 @@ def test_unitary(n):
         assert np.allclose(operator(synq.unitary(u)), u, atol=1e-10)
 
 
+def qasm_to_gates(qasm):
+    """Parses the QASM text into the same representation as the *_gates functions."""
+    names = {"rz": synq.RZ, "ry": synq.RY, "p": synq.P}
+    types, qubits, angles, phase = [], [], [], 0.0
+    for line in map(str.strip, qasm.splitlines()):
+        if m := _ROT.match(line):
+            types.append(names[m[1]]); qubits.append((int(m[3]), -1)); angles.append(float(m[2]))
+        elif m := _CX.match(line):
+            types.append(synq.CX); qubits.append((int(m[1]), int(m[2]))); angles.append(0.0)
+        elif m := _GPHASE.match(line):
+            phase += float(m[1])
+    return types, qubits, angles, phase
+
+
+def assert_same_circuit(qasm, gates):
+    """The gate list and the QASM text describe exactly the same circuit."""
+    types, qubits, angles, phase = gates
+    q_types, q_qubits, q_angles, q_phase = qasm_to_gates(qasm)
+    assert types.dtype == np.uint8 and qubits.dtype == np.int32 and angles.dtype == np.float64
+    assert types.tolist() == q_types
+    assert [tuple(q) for q in qubits.tolist()] == q_qubits
+    assert angles.tolist() == q_angles  # exact: QASM angles are printed with 17 digits
+    assert phase == pytest.approx(q_phase, abs=1e-15)
+
+
+@pytest.mark.parametrize("n", range(1, 6))
+def test_gate_lists_match_qasm(n):
+    u = random_unitary(2**n, rng)
+    assert_same_circuit(synq.unitary(u), synq.unitary_gates(u))
+    d = np.exp(1j * rng.uniform(-np.pi, np.pi, 2**n))
+    assert_same_circuit(synq.diagonal(d), synq.diagonal_gates(d))
+    v = rng.normal(size=2**n) + 1j * rng.normal(size=2**n)
+    v /= np.linalg.norm(v)
+    assert_same_circuit(synq.state_preparation(v), synq.state_preparation_gates(v))
+
+
+def simulate_gates(gates, state):
+    types, qubits, angles, phase = gates
+    n = int(np.log2(len(state)))
+    state = np.array(state, dtype=complex) * np.exp(1j * phase)
+    names = {synq.RZ: "rz", synq.RY: "ry", synq.P: "p"}
+    for gate, (q0, q1), angle in zip(types, qubits, angles):
+        if gate in names:
+            state = _apply_1q(state, _one_qubit(names[gate], angle), q0, n)
+        else:
+            state = _apply_cx(state, q0, q1)
+    return state
+
+
+@pytest.mark.parametrize("n", range(1, 5))
+def test_gate_lists_are_correct(n):
+    u = random_unitary(2**n, rng)
+    out = np.column_stack([simulate_gates(synq.unitary_gates(u), c) for c in np.eye(2**n)])
+    assert np.allclose(out, u, atol=1e-10)
+
+
+def test_gate_lists_validate_inputs():
+    with pytest.raises(ValueError):
+        synq.state_preparation_gates([1.0, 1.0])
+    with pytest.raises(ValueError):
+        synq.unitary_gates(np.ones((4, 4)))
+    with pytest.raises(ValueError):
+        synq.diagonal_gates([1.0, 0.5])
+
+
 def test_toffoli():
     u = np.eye(8)
     u[[6, 7]] = u[[7, 6]]

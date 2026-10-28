@@ -13,6 +13,7 @@
 #include <iomanip>
 #include <limits>
 #include <locale>
+#include <cstdint>
 
 #include "ucrzNode.h"
 #include "ucryNode.h"
@@ -82,15 +83,44 @@ struct return_type_visitor {
     }
 };
 
+/**
+ * @brief A gate of the synthesized circuit (used when the visitor records gates).
+ *
+ * type: 0 = rz, 1 = ry, 2 = p (q0 = target, q1 = -1, angle),
+ *       3 = cx (q0 = control, q1 = target).
+ */
+struct circuitGate {
+    std::uint8_t type;
+    int q0;
+    int q1;
+    double angle;
+};
+
+/**
+ * @brief Emits the circuit of an AST, as OpenQASM 3 text (default) or as a list of gates.
+ *
+ * Both outputs describe the same circuit: every gate goes through emit_rotation,
+ * emit_two_qubit or emit_gphase, which either append QASM text or record the gate.
+ */
 class qasmVisitor : public nodeVisitor {
 public:
+    enum gateType : std::uint8_t { RZ = 0, RY = 1, P = 2, CX = 3 };
+
     std::string qasm_code;
     int _num_qubits;
     int current_msb;
     int active_target = -1;
     bool gate_synthesis = false;
     double global_phase = 0;
-    explicit qasmVisitor(int num_qubits);
+
+    /** If false, gates are recorded in `gates` (and `total_phase`) instead of `qasm_code`. */
+    bool emit_qasm = true;
+    /** Gates in time order (only when emit_qasm is false). */
+    std::vector<circuitGate> gates;
+    /** Sum of all global phases (only when emit_qasm is false). */
+    double total_phase = 0.0;
+
+    explicit qasmVisitor(int num_qubits, bool emit_qasm = true);
     void visit(rzNode &node) override;
     void visit(firstUcrzNode &node) override;
     void visit(ucrzNode &node) override;
@@ -107,4 +137,8 @@ public:
     void visit(diagonalGateNode &node) override;
     void visit(oneQubitDiagonalGateNode &node) override;
 
+private:
+    void emit_rotation(gateType type, int qubit, double angle);
+    void emit_two_qubit(gateType type, int control, int target);
+    void emit_gphase(double angle);
 };

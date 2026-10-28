@@ -46,9 +46,11 @@ import synq
 qasm = synq.state_preparation(np.array([1, 1j, -1, 0]) / np.sqrt(3))
 qasm = synq.unitary(matrix)         # 2^n x 2^n unitary
 qasm = synq.diagonal(phases)        # entries with modulus 1
+
+types, qubits, angles, phase = synq.unitary_gates(matrix)   # same circuit as arrays
 ```
 
-Each function returns an OpenQASM 3 string. [qclib](https://github.com/qclib/qclib) converts it into a Qiskit circuit (`qclib.synq`, `SynqInitialize`, `unitary(..., decomposition="synq")`).
+`state_preparation`, `unitary` and `diagonal` return an OpenQASM 3 string. The `*_gates` variants (`state_preparation_gates`, `unitary_gates`, `diagonal_gates`) return the same circuit as `(types, qubits, angles, global_phase)` numpy arrays: types are `synq.RZ`, `RY`, `P`, `CX` (0–3), `qubits[k]` is `(target, -1)` for rotations and `(control, target)` for `cx`. They avoid formatting and parsing text, so they are the faster way to consume the circuit. [qclib](https://github.com/qclib/qclib) converts it into a Qiskit circuit (`qclib.synq`, `SynqInitialize`, `unitary(..., decomposition="synq")`).
 
 Python tests (they simulate the output with numpy and check it against the target):
 
