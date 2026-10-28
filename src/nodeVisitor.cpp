@@ -155,7 +155,7 @@ void qasmVisitor::visit(UCRotationNode &node) {
 
 void qasmVisitor::visit(qspUcrNode &node) {
     if (std::abs(node.global_phase) > 1e-12) {
-        qasm_code += "gphase(" + std::to_string(node.global_phase) + ");\n";
+        qasm_code += "gphase(" + format_angle(node.global_phase) + ");\n";
     }
     if (node.next_qsp) {
         node.next_qsp->accept(*this);
@@ -180,7 +180,7 @@ void qasmVisitor::visit(unitaryGateNode &node) {
 
     if (node.get_num_qubits() == _num_qubits) {
         global_phase = std::fmod(global_phase, 2 * std::numbers::pi);
-        qasm_code += "gphase(" + std::to_string(global_phase) + ");\n";
+        qasm_code += "gphase(" + format_angle(global_phase) + ");\n";
     }
     
     current_msb = previous_msb;
@@ -221,9 +221,9 @@ void qasmVisitor::visit(diagonalGateNode &node) {
 
 void qasmVisitor::visit(oneQubitDiagonalGateNode &node) {
     if (std::abs(node.global_phase) > 1e-12) {
-        qasm_code += "gphase(" + std::to_string(node.global_phase) + ");\n";
+        qasm_code += "gphase(" + format_angle(node.global_phase) + ");\n";
     }
-    qasm_code += "p(" + std::to_string(node.p_phase) + ") q[0];\n";
+    qasm_code += "p(" + format_angle(node.p_phase) + ") q[0];\n";
 }
 
 void qasmVisitor::visit(csdNode &node) {
@@ -240,9 +240,9 @@ void qasmVisitor::visit(csdNode &node) {
 
 void qasmVisitor::visit(unitaryOneQubitGateNode &node){
     global_phase += node.params.alpha;
-    qasm_code += "rz(" + std::to_string(node.params.delta) + ") q[" + std::to_string(node.position) + "];\n";
-    qasm_code += "ry(" + std::to_string(node.params.gamma) + ") q[" + std::to_string(node.position) + "];\n";
-    qasm_code += "rz(" + std::to_string(node.params.beta) + ") q[" + std::to_string(node.position) + "];\n";
+    qasm_code += "rz(" + format_angle(node.params.delta) + ") q[" + std::to_string(node.position) + "];\n";
+    qasm_code += "ry(" + format_angle(node.params.gamma) + ") q[" + std::to_string(node.position) + "];\n";
+    qasm_code += "rz(" + format_angle(node.params.beta) + ") q[" + std::to_string(node.position) + "];\n";
 }
 
 void qasmVisitor::visit(twoQubitGateNode &node) {

@@ -9,6 +9,10 @@
 #include <vector>
 #include <complex>
 #include <string>
+#include <sstream>
+#include <iomanip>
+#include <limits>
+#include <locale>
 
 #include "ucrzNode.h"
 #include "ucryNode.h"
@@ -39,13 +43,26 @@ public:
     virtual void visit(oneQubitDiagonalGateNode &node) = 0;
 };
 
+/**
+ * @brief Formats an angle with full double precision (round-trip safe).
+ *
+ * std::to_string only keeps 6 decimal places, which limits the accuracy of the
+ * generated circuits to ~1e-6.
+ */
+inline std::string format_angle(const double value) {
+    std::ostringstream stream;
+    stream.imbue(std::locale::classic());
+    stream << std::setprecision(std::numeric_limits<double>::max_digits10) << value;
+    return stream.str();
+}
+
 struct return_type_visitor {
     std::string operator()(std::monostate) {
         return "";
     }
 
     std::string operator()(const double a) {
-        return std::to_string(a);
+        return format_angle(a);
     }
     
     std::string operator()(const std::vector<double> a) { 
