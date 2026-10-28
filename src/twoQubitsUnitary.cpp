@@ -8,22 +8,23 @@
 #include <iostream>
 #include <vector>
 #include <numbers>
+#include <limits>
 
 using namespace std;
 
 using twoQubitsTensor = std::pair<Eigen::Matrix2cd, Eigen::Matrix2cd>;
 
-complex<double> i(0,1);
-double pi = std::numbers::pi;
+static const complex<double> i(0,1);
+static const double pi = std::numbers::pi;
 
-Eigen::Matrix4cd E = (Eigen::Matrix4cd() << 
+static const Eigen::Matrix4cd E = (Eigen::Matrix4cd() << 
     1,  i,  0,  0,
     0,  0,  i,  1,
     0,  0,  i, -1,
     1, -i,  0,  0
 ).finished() * (1.0 / std::sqrt(2.0));
 
-Eigen::Matrix4cd SWAP = (Eigen::Matrix4cd() << 
+static const Eigen::Matrix4cd SWAP = (Eigen::Matrix4cd() << 
     1, 0, 0, 0,
     0, 0, 1, 0,
     0, 1, 0, 0,
@@ -83,51 +84,32 @@ std::pair<Eigen::Matrix4cd, Eigen::Matrix4cd> diagonalizes(const Eigen::Matrix4c
 
     Eigen::Matrix4cd M = SUm * SUm.transpose();
 
-    Eigen::ComplexEigenSolver<Eigen::Matrix4cd> solver (M, false);
-    Eigen::Vector4cd eigenvalues = solver.eigenvalues();
-    Eigen::Matrix4d A = M.real();
-    Eigen::Matrix4d B = M.imag();
-    Eigen::Matrix4d I = Eigen::Matrix4d::Identity();
+    // M is complex symmetric and unitary, so Re(M) and Im(M) are commuting real
+    // symmetric matrices and share a real orthonormal eigenbasis. A generic real
+    // combination x*Re(M) + y*Im(M) has that basis as its eigenbasis, so a real
+    // symmetric eigensolver gives op1 directly, also when eigenvalues of M are
+    // degenerate (the previous kernel-of-Hk approach depended on a 1e-10 grouping
+    // threshold, lost precision and could leave columns of op1 uninitialized).
+    // A few fixed coefficient pairs are tried in case one is accidentally degenerate.
+    const Eigen::Matrix4d A = M.real();
+    const Eigen::Matrix4d B = M.imag();
+    static const double coefficients[][2] = {
+        {1.0, 0.0}, {0.7853981633974483, 0.6180339887498949}, {0.3141592653589793, 1.4142135623730951},
+        {1.7320508075688772, -0.5772156649015329}, {-0.4142135623730951, 1.2599210498948732},
+        {0.9189385332046727, 2.718281828459045}};
 
-    std::vector<std::complex<double>> unique_eigenvalues;
-    bool visited[4] = {false, false, false, false};
-
-    //collects unique eigenvalues of M, which can be degenerate.
-    for (int i = 0; i<4; i++){
-
-        if (visited[i]) continue;
-
-        visited[i] = true;
-        std::complex<double> sigma = eigenvalues(i);
-        unique_eigenvalues.push_back(sigma);
-        for (int j = i+1; j<4; j++){
-            if (std::abs(sigma - eigenvalues(j)) < 1e-10 && !visited[j]){
-                visited[j] = true;
-            }
+    Eigen::Matrix4d real_op1 = Eigen::Matrix4d::Identity();
+    double best_error = std::numeric_limits<double>::infinity();
+    for (const auto& coef : coefficients) {
+        Eigen::SelfAdjointEigenSolver<Eigen::Matrix4d> solver(coef[0] * A + coef[1] * B);
+        const Eigen::Matrix4d P = solver.eigenvectors();
+        Eigen::Matrix4cd D = P.transpose().cast<std::complex<double>>() * M * P.cast<std::complex<double>>();
+        const double error = (D - Eigen::Matrix4cd(D.diagonal().asDiagonal())).cwiseAbs().maxCoeff();
+        if (error < best_error) {
+            best_error = error;
+            real_op1 = P;
         }
-    }
-
-    Eigen::Matrix4d real_op1;
-    int col_idx = 0;
-
-    // Hk * v = 0, where Hk = (A - ak * I)^2 + (B - bk * I)^2
-    // and where ak and bk are the real and imaginary parts of the k-th eigenvalue of M
-    // forces the eigenvectors v to be real.
-    for (int k = 0; k < unique_eigenvalues.size(); k++) {
-        double ak = unique_eigenvalues[k].real();
-        double bk = unique_eigenvalues[k].imag();
-        Eigen::Matrix4d Hk = (A - ak * I) * (A - ak * I) + (B - bk * I) * (B - bk * I);
-
-        // resolves the linear system by using svd
-        Eigen::JacobiSVD<Eigen::Matrix4d> svd(Hk, Eigen::ComputeFullV);
-        Eigen::Vector4d singular_values = svd.singularValues();
-
-        for (int i = 3; i >=0; i--) {
-            if (singular_values(i) < 1e-10) {
-                real_op1.col(col_idx) = svd.matrixV().col(i);
-                col_idx++;
-            }
-        }
+        if (error < 1e-13) break;
     }
 
     //guarantees op1 in SO(4)
