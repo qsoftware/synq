@@ -17,7 +17,7 @@
 int unitaryGateNode::index = 0;
 
 unitaryGateNode::unitaryGateNode(const Eigen::MatrixXcd& matrix, bool optimize, bool defer_two_qubit,
-                                 unitaryDecomposition method) : data(matrix), method(method) {
+                                 unitaryDecomposition method, bool check_unitary) : data(matrix), method(method) {
 
     if (matrix.size() == 0 || matrix.rows() != matrix.cols()) {
         throw std::invalid_argument("Matrix must be square and non-empty");
@@ -27,7 +27,7 @@ unitaryGateNode::unitaryGateNode(const Eigen::MatrixXcd& matrix, bool optimize, 
         throw std::invalid_argument("Matrix dimension must be a power of 2 (e.g., 2, 4, 8, 16...)");
     }
 
-    if ((matrix * matrix.adjoint()).isIdentity(1e-10) == false) {
+    if (check_unitary && !(matrix * matrix.adjoint()).isIdentity(1e-10)) {
         throw std::invalid_argument("Matrix must be unitary");
     }
 

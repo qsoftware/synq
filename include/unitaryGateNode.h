@@ -68,9 +68,12 @@ public:
      *        block is decomposed exactly once. The root sets it for its descendants
      *        when it applies A.2; after the root's constructor the tree is complete.
      * @param method Decomposition of this node and its descendants with three or more qubits.
+     * @param check_unitary Verify that `matrix` is unitary (O(d^3)). Internal use: the
+     *        nodes of the decomposition pass false, because their matrices are unitary
+     *        by construction; only the root checks its input.
      */
     explicit unitaryGateNode(const Eigen::MatrixXcd& matrix, bool optimize = true, bool defer_two_qubit = false,
-                             unitaryDecomposition method = unitaryDecomposition::QSD);
+                             unitaryDecomposition method = unitaryDecomposition::QSD, bool check_unitary = true);
 
     /**
      * @brief Decomposes a unitary matrix with the given options (this node is the root).

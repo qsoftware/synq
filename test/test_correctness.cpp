@@ -794,3 +794,21 @@ TEST(CorrectnessZxz, QsdIsStillTheDefault) {
     EXPECT_NE(visit_qasm(plain, 4), visit_qasm(zxz, 4));
     EXPECT_EQ(visit_qasm(plain, 4).find("h q"), std::string::npos);
 }
+
+// ---------------------------------------------------------------------------
+// Input validation: only the root checks unitarity, with any options
+// ---------------------------------------------------------------------------
+
+TEST(CorrectnessUnitary, RootRejectsNonUnitaryWithAnyOptions) {
+    Eigen::MatrixXcd almost = random_unitary(16);
+    almost(3, 5) += 1e-6;
+    for (const auto method : {unitaryDecomposition::QSD, unitaryDecomposition::BlockZXZ}) {
+        for (const bool a2 : {true, false}) {
+            EXPECT_THROW(unitaryGateNode(almost, synthesisOptions{.method = method, .a2 = a2}), std::invalid_argument);
+            EXPECT_THROW(unitaryGateNode(almost, a2, false, method), std::invalid_argument);
+        }
+    }
+    EXPECT_THROW(unitaryGateNode(Eigen::MatrixXcd::Ones(4, 4)), std::invalid_argument);
+    EXPECT_THROW(unitaryGateNode(Eigen::MatrixXcd::Identity(3, 3)), std::invalid_argument);
+    EXPECT_NO_THROW(unitaryGateNode(random_unitary(16)));
+}

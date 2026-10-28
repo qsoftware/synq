@@ -34,7 +34,8 @@ zxzNode::zxzNode(const Eigen::MatrixXcd& matrix, const bool defer_two_qubit) : m
     b2.bottomRows(quarter) *= -1.0;
     b2.rightCols(quarter) *= -1.0;
 
-    gate_w_c = std::make_unique<unitaryGateNode>(c.gate_w, false, defer_two_qubit, method);
+    // the children are unitary by construction: only the root checks its input
+    gate_w_c = std::make_unique<unitaryGateNode>(c.gate_w, false, defer_two_qubit, method, false);
 
     const std::vector<double> angles_c = rzAngles(c.list_d);
     ucrz_c = std::make_unique<firstUcrzNode>(&angles_c);
@@ -49,7 +50,7 @@ zxzNode::zxzNode(const Eigen::MatrixXcd& matrix, const bool defer_two_qubit) : m
     ucrz_a->mirror = true;
     ucrz_a->drop_first = true;
 
-    gate_v_a = std::make_unique<unitaryGateNode>(a.gate_v, false, defer_two_qubit, method);
+    gate_v_a = std::make_unique<unitaryGateNode>(a.gate_v, false, defer_two_qubit, method, false);
 }
 
 void zxzNode::accept(nodeVisitor &visitor) {
