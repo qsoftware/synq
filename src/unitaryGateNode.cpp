@@ -9,12 +9,13 @@
 #include "../include/twoQubitsUnitary.h"
 #include "../include/ryNode.h"
 #include "../include/rzNode.h"
+#include "../include/qsdNode.h"
 #include <stdexcept>
 #include <cmath>
 
 int unitaryGateNode::index = 0;
 
-unitaryGateNode::unitaryGateNode(const Eigen::MatrixXcd& matrix) : data(matrix) {
+unitaryGateNode::unitaryGateNode(const Eigen::MatrixXcd& matrix, bool optimize) : data(matrix) {
 
     if (matrix.size() == 0 || matrix.rows() != matrix.cols()) {
         throw std::invalid_argument("Matrix must be square and non-empty");
@@ -31,6 +32,45 @@ unitaryGateNode::unitaryGateNode(const Eigen::MatrixXcd& matrix) : data(matrix) 
     num_qubits = static_cast<int>(log2(static_cast<double>(matrix.rows())));
     name = index++;
     init();
+    if (optimize && num_qubits > 2) {
+        applyA2();
+    }
+}
+
+void unitaryGateNode::collectTwoQubitLeaves(std::vector<unitaryGateNode*>& leaves) {
+    // Same (time) order as qasmVisitor: csd -> qsd2, ucry, qsd1; qsd -> gate_w, ucrz, gate_v.
+    if (num_qubits == 2) {
+        leaves.push_back(this);
+        return;
+    }
+    auto* csd_node = dynamic_cast<csdNode*>(csd.get());
+    if (csd_node == nullptr) return;
+    for (qsdNode* qsd_node : {csd_node->qsd2.get(), csd_node->qsd1.get()}) {
+        qsd_node->gate_w->collectTwoQubitLeaves(leaves);
+        qsd_node->gate_v->collectTwoQubitLeaves(leaves);
+    }
+}
+
+void unitaryGateNode::applyA2() {
+    /*
+     * Optimization A.2 (Shende, Bullock, Markov 2006): every two-qubit block except
+     * the last is implemented up to a diagonal D with two CNOTs, and D is moved
+     * forward into the next block (in time order). Between two consecutive blocks
+     * there are only multiplexed rotations, and the CZs of A.1, whose targets are
+     * qubits >= 2. They are diagonal in qubits 0 and 1, so D commutes with them.
+     */
+    std::vector<unitaryGateNode*> leaves;
+    collectTwoQubitLeaves(leaves);
+    if (leaves.size() < 2) return;
+
+    Eigen::Matrix4cd carry = Eigen::Matrix4cd::Identity();
+    for (std::size_t k = 0; k < leaves.size(); ++k) {
+        const Eigen::Matrix4cd matrix = Eigen::Matrix4cd(leaves[k]->data) * carry;
+        const bool last = (k + 1 == leaves.size());
+        auto node = std::make_unique<twoQubitGateNode>(matrix, !last);
+        carry = node->diagonal;
+        leaves[k]->csd = std::move(node);
+    }
 }
 
 void unitaryGateNode::init(){
@@ -46,7 +86,24 @@ void unitaryGateNode::init(){
 unitaryOneQubitGateNode::unitaryOneQubitGateNode(const zyz_result& zyz_params, int position) : params(zyz_params), position(position) {
 }
 
-twoQubitGateNode::twoQubitGateNode(const Eigen::MatrixXcd& matrix) {
+twoQubitGateNode::twoQubitGateNode(const Eigen::MatrixXcd& matrix, bool up_to_diagonal) {
+    num_qubits = 2;
+    if (up_to_diagonal) {
+        const Eigen::Matrix4cd D = diagonalForTwoCx(matrix);
+        const auto two = twoCxDecomposition(D.adjoint() * Eigen::Matrix4cd(matrix));
+        if (two.error < 1e-9) {
+            two_cx = true;
+            diagonal = D;
+            gate_a = unitaryGateNode::createBaseUnitary(two.A, 1);
+            gate_b = unitaryGateNode::createBaseUnitary(two.B, 0);
+            gate_c = unitaryGateNode::createBaseUnitary(two.C, 1);
+            gate_d = unitaryGateNode::createBaseUnitary(two.D, 0);
+            rz_theta = rzNode::createRzNode(two.angleRz, 1);
+            ry1_theta = ryNode::createRyNode(two.angleRy, 0);
+            phase = two.phase;
+            return;
+        }
+    }
     auto decomp_result = twoQubitsUnitaryDecomposition(matrix);
     
     gate_a = unitaryGateNode::createBaseUnitary(decomp_result.A, 0);

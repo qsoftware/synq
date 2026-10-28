@@ -9,6 +9,8 @@
 #include <vector>
 #include <numbers>
 #include <limits>
+#include <algorithm>
+#include <cmath>
 
 using namespace std;
 
@@ -74,16 +76,9 @@ twoQubitsTensor decomposeKronecker(const Eigen::Matrix4cd& M) {
     return {A, B};
 }
 
-std::pair<Eigen::Matrix4cd, Eigen::Matrix4cd> diagonalizes(const Eigen::Matrix4cd& SUm){
-
-    /** Diagonalizes M = SUm * SUm^T while forcing the eigenvectors (op1) into SO(4, R).
-     * A unitary in SU(4) can be decomposed in op1 * diag * op2, with op1 and op2 into SO(4, R).
-     * based on "Nonlocal properties of two-qubit gates and mixed states and optimization of quantum computations"
-     * by Makhlin (2000).
-     **/
-
-    Eigen::Matrix4cd M = SUm * SUm.transpose();
-
+// Real orthogonal P (det +1) such that P^T M P is diagonal, for M complex
+// symmetric and unitary.
+static Eigen::Matrix4d realEigenbasis(const Eigen::Matrix4cd& M) {
     // M is complex symmetric and unitary, so Re(M) and Im(M) are commuting real
     // symmetric matrices and share a real orthonormal eigenbasis. A generic real
     // combination x*Re(M) + y*Im(M) has that basis as its eigenbasis, so a real
@@ -111,6 +106,24 @@ std::pair<Eigen::Matrix4cd, Eigen::Matrix4cd> diagonalizes(const Eigen::Matrix4c
         }
         if (error < 1e-13) break;
     }
+
+    if (real_op1.determinant() < 0.0) {
+        real_op1.col(0) *= -1.0;
+    }
+    return real_op1;
+}
+
+std::pair<Eigen::Matrix4cd, Eigen::Matrix4cd> diagonalizes(const Eigen::Matrix4cd& SUm){
+
+    /** Diagonalizes M = SUm * SUm^T while forcing the eigenvectors (op1) into SO(4, R).
+     * A unitary in SU(4) can be decomposed in op1 * diag * op2, with op1 and op2 into SO(4, R).
+     * based on "Nonlocal properties of two-qubit gates and mixed states and optimization of quantum computations"
+     * by Makhlin (2000).
+     **/
+
+    Eigen::Matrix4cd M = SUm * SUm.transpose();
+
+    Eigen::Matrix4d real_op1 = realEigenbasis(M);
 
     //guarantees op1 in SO(4)
     if (real_op1.determinant() < 0.0) {
@@ -192,4 +205,168 @@ DecompTwoQubitsResult twoQubitsUnitaryDecomposition(const Eigen::Matrix4cd& U) {
     double phase = -std::arg(exp_phase) + extracted_phase;
 
     return DecompTwoQubitsResult{A, B, C, D, rz_theta1, rz_theta2, rz_theta3, phase};
+}
+
+// ---------------------------------------------------------------------------
+// Optimization A.2 (Shende, Bullock, Markov, "Synthesis of quantum logic
+// circuits", 2006): a two-qubit unitary U is written as U = D * V, where D is
+// diagonal and V needs only two CNOTs. D is then merged into the next
+// two-qubit block of the decomposition.
+// ---------------------------------------------------------------------------
+
+namespace {
+
+const Eigen::Matrix4cd YY = (Eigen::Matrix4cd() <<
+     0, 0, 0, -1,
+     0, 0, 1,  0,
+     0, 1, 0,  0,
+    -1, 0, 0,  0).finished();
+
+// Eigenvalue signs of XX, ZZ and YY in the magic basis E (columns of E).
+const double X_SIGNS[4] = {1.0, -1.0, 1.0, -1.0};
+const double Z_SIGNS[4] = {1.0, 1.0, -1.0, -1.0};
+const double Y_SIGNS[4] = {-1.0, 1.0, 1.0, -1.0};
+
+// CNOT with control q0 and target q1 (little-endian order, as in Qiskit).
+const Eigen::Matrix4cd CX01 = (Eigen::Matrix4cd() <<
+    1, 0, 0, 0,
+    0, 0, 0, 1,
+    0, 0, 1, 0,
+    0, 1, 0, 0).finished();
+
+Eigen::Matrix2cd ry2(double theta) {
+    Eigen::Matrix2cd m;
+    m << std::cos(theta / 2), -std::sin(theta / 2),
+         std::sin(theta / 2),  std::cos(theta / 2);
+    return m;
+}
+
+Eigen::Matrix4cd kron2(const Eigen::Matrix2cd& q1, const Eigen::Matrix2cd& q0) {
+    Eigen::Matrix4cd m;
+    for (int r = 0; r < 2; ++r)
+        for (int c = 0; c < 2; ++c)
+            m.block<2, 2>(2 * r, 2 * c) = q1(r, c) * q0;
+    return m;
+}
+
+std::complex<double> fourthRootOfDet(const Eigen::Matrix4cd& U) {
+    return std::pow(U.determinant(), 0.25);
+}
+
+}  // namespace
+
+Eigen::Matrix4cd diagonalForTwoCx(const Eigen::Matrix4cd& U) {
+    /*
+     * V = exp(-i theta ZZ) U needs two CNOTs iff tr(gamma(V)) is real, where
+     * gamma(V) = V (Y x Y) V^T (Y x Y) and V is normalized to SU(4).
+     * ZZ commutes with YY, so tr(gamma(V)) = cos(2 theta) tr(G) - i sin(2 theta) tr(ZZ G),
+     * with G = gamma(U); its imaginary part vanishes for the theta below.
+     * Returns D = exp(i theta ZZ), so that U = D V.
+     */
+    const Eigen::Matrix4cd Us = U / fourthRootOfDet(U);
+    const Eigen::Matrix4cd G = Us * YY * Us.transpose() * YY;
+    const std::complex<double> t0 = G.trace();
+    std::complex<double> t1 = 0.0;
+    for (int k = 0; k < 4; ++k) {
+        const double zz = (k == 0 || k == 3) ? 1.0 : -1.0;
+        t1 += zz * G(k, k);
+    }
+    const double theta = 0.5 * std::atan2(t0.imag(), t1.real());
+    Eigen::Matrix4cd D = Eigen::Matrix4cd::Zero();
+    D(0, 0) = std::exp(i * theta);
+    D(1, 1) = std::exp(-i * theta);
+    D(2, 2) = std::exp(-i * theta);
+    D(3, 3) = std::exp(i * theta);
+    return D;
+}
+
+DecompTwoCxResult twoCxDecomposition(const Eigen::Matrix4cd& V) {
+    /*
+     * Canonical (KAK) decomposition with one interaction coefficient equal to zero:
+     *   V = e^{i phase} (A x B) exp(i (a XX + c ZZ)) (C x D),
+     * and exp(i (a XX + c ZZ)) = CX01 (Rz(-2c) x Rx(-2a)) CX01, where
+     * Rx(t) = Rz(-pi/2) Ry(t) Rz(pi/2) and Rz on the control commutes with CX01.
+     *
+     * In the magic basis V_B = O1 Delta O2 with O1, O2 in SO(4). The phases of Delta
+     * (defined modulo pi through Delta^2) are matched to a*x_k + c*z_k + g by trying
+     * the orderings and branches; the YY component must vanish and the phases must
+     * sum to 0 mod 2pi so that O2 has determinant +1.
+     */
+    const Eigen::Matrix4cd Vs = V / fourthRootOfDet(V);
+    const Eigen::Matrix4cd VB = E.adjoint() * Vs * E;
+    const Eigen::Matrix4cd M = VB * VB.transpose();
+    const Eigen::Matrix4d O1 = realEigenbasis(M);
+    const Eigen::Matrix4cd Md = O1.transpose().cast<std::complex<double>>() * M * O1.cast<std::complex<double>>();
+
+    double half[4];
+    for (int k = 0; k < 4; ++k) half[k] = std::arg(Md(k, k)) / 2.0;
+
+    // With the phases ordered as the X/Z sign patterns, lambda = (g+a+c, g-a+c, g+a-c, g-a-c):
+    // the YY component vanishes iff lambda_0 + lambda_3 == lambda_1 + lambda_2. So the
+    // four phases must split into two pairs with equal sums. Each half[k] is only known
+    // modulo pi, so try the 3 pairings and the 16 branch choices of each (48 cases):
+    // the pair sums must be exactly equal and the total must be 0 mod 2pi (so that O2
+    // has determinant +1). All pairings are tried because, with repeated eigenvalues
+    // (SWAP, CNOT, CZ, ...), several pairings can look equally good modulo pi while
+    // only some of them have a valid choice of branches.
+    static const int pairings[3][4] = {{0, 2, 3, 1}, {0, 1, 3, 2}, {0, 1, 2, 3}};  // order: p, r, s, q
+    int best_perm[4] = {0, 1, 2, 3};
+    double best_lambda[4] = {half[0], half[1], half[2], half[3]};
+    double best_residual = std::numeric_limits<double>::infinity();
+    for (const auto& order : pairings) {
+        for (int t = 0; t < 16; ++t) {
+            double lambda[4];
+            double total = 0.0;
+            for (int k = 0; k < 4; ++k) {
+                lambda[k] = half[order[k]] + (((t >> k) & 1) ? pi : 0.0);
+                total += lambda[k];
+            }
+            if (std::abs(std::remainder(total, 2 * pi)) > 1e-9) continue;
+            double y = 0.0;
+            for (int k = 0; k < 4; ++k) y += Y_SIGNS[k] * lambda[k];
+            const double residual = std::abs(y);
+            if (residual < best_residual) {
+                best_residual = residual;
+                std::copy(order, order + 4, best_perm);
+                std::copy(lambda, lambda + 4, best_lambda);
+            }
+        }
+    }
+
+    double a = 0.0, c = 0.0, g = 0.0;
+    for (int k = 0; k < 4; ++k) {
+        a += X_SIGNS[k] * best_lambda[k] / 4.0;
+        c += Z_SIGNS[k] * best_lambda[k] / 4.0;
+        g += best_lambda[k] / 4.0;
+    }
+
+    Eigen::Matrix4d P = Eigen::Matrix4d::Zero();
+    for (int k = 0; k < 4; ++k) P(k, best_perm[k]) = 1.0;
+    Eigen::Matrix4d O1p = O1 * P.transpose();
+    if (O1p.determinant() < 0.0) O1p.col(0) *= -1.0;
+
+    Eigen::Vector4cd delta;
+    for (int k = 0; k < 4; ++k) delta(k) = std::exp(i * (a * X_SIGNS[k] + c * Z_SIGNS[k] + g));
+    const Eigen::Matrix4cd O2 = delta.conjugate().asDiagonal() * O1p.transpose().cast<std::complex<double>>() * VB;
+
+    const Eigen::Matrix4cd K1 = E * O1p.cast<std::complex<double>>() * E.adjoint();
+    const Eigen::Matrix4cd K2 = E * O2.real().cast<std::complex<double>>() * E.adjoint();
+    const auto [A, B] = decomposeKronecker(K1);
+    const auto [C, D] = decomposeKronecker(K2);
+
+    DecompTwoCxResult result;
+    result.A = A;                           // qubit 1, applied last
+    result.B = B * Rz(-pi / 2);             // qubit 0, applied last
+    result.C = C;                           // qubit 1, applied first
+    result.D = Rz(pi / 2) * D;              // qubit 0, applied first
+    result.angleRy = -2.0 * a;              // qubit 0, between the CNOTs
+    result.angleRz = -2.0 * c;              // qubit 1, between the CNOTs
+
+    const Eigen::Matrix4cd W = kron2(result.A, result.B) * CX01 *
+                               kron2(Rz(result.angleRz), ry2(result.angleRy)) * CX01 *
+                               kron2(result.C, result.D);
+    const std::complex<double> overlap = (W.conjugate().cwiseProduct(V)).sum();
+    result.phase = std::arg(overlap);
+    result.error = (std::exp(i * result.phase) * W - V).cwiseAbs().maxCoeff();
+    return result;
 }

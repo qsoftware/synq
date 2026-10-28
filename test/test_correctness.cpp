@@ -24,6 +24,7 @@
 #include "../include/nodeVisitor.h"
 #include "../include/qspUcrNode.h"
 #include "../include/unitaryGateNode.h"
+#include "../include/twoQubitsUnitary.h"
 
 namespace {
 
@@ -350,20 +351,77 @@ TEST(CorrectnessGateList, SameCircuitAsQasm) {
 }
 
 // ---------------------------------------------------------------------------
-// Two-qubit gate count (optimization A.1 saves one CNOT per CSD step)
+// Two-qubit gate count (optimizations A.1 and A.2)
 // ---------------------------------------------------------------------------
 
-TEST(CorrectnessUnitary, TwoQubitGateCountWithA1) {
-    // (9/16) 4^n - (3/2) 2^n two-qubit gates without optimizations, minus
-    // (4^(n-2) - 1)/3, the number of CSD steps, with A.1.
-    const std::pair<int, std::size_t> expected[] = {{3, 23}, {4, 115}, {5, 507}};
-    for (const auto& [n, count] : expected) {
-        unitaryGateNode node(random_unitary(Eigen::Index(1) << n));
-        qasmVisitor visitor(n, false);
+TEST(CorrectnessUnitary, TwoQubitGateCountWithA1A2) {
+    // (23/48) 4^n - (3/2) 2^n + 4/3 two-qubit gates (Shende, Bullock, Markov 2006):
+    // A.1 saves one CNOT per CSD step, A.2 one per two-qubit block except the last.
+    // Structured matrices must give the same count: otherwise some two-qubit block
+    // silently fell back to three CNOTs.
+    const auto count_two_qubit = [](const Eigen::MatrixXcd& u) {
+        unitaryGateNode node(u);
+        qasmVisitor visitor(qubits_of(u.rows()), false);
         node.accept(visitor);
         std::size_t two_qubit = 0;
         for (const auto& gate : visitor.gates) two_qubit += (gate.type >= qasmVisitor::CX);
-        EXPECT_EQ(two_qubit, count) << n << " qubits";
+        return two_qubit;
+    };
+    const std::pair<int, std::size_t> expected[] = {{3, 20}, {4, 100}, {5, 444}};
+    for (const auto& [n, count] : expected) {
+        const Eigen::Index dim = Eigen::Index(1) << n;
+        EXPECT_EQ(count_two_qubit(random_unitary(dim)), count) << n << " qubits, random";
+        if (n > 4) continue;
+        EXPECT_EQ(count_two_qubit(Eigen::MatrixXcd::Identity(dim, dim)), count) << n << " qubits, identity";
+        EXPECT_EQ(count_two_qubit(permutation(dim)), count) << n << " qubits, permutation";
+        EXPECT_EQ(count_two_qubit(qft(dim)), count) << n << " qubits, QFT";
+        EXPECT_EQ(count_two_qubit(random_phases(dim).asDiagonal().toDenseMatrix()), count) << n << " qubits, diagonal";
+    }
+}
+
+// ---------------------------------------------------------------------------
+// A.2 building block: U = D * V, D diagonal, V with two CNOTs
+// ---------------------------------------------------------------------------
+
+namespace {
+
+void expect_two_cx_up_to_diagonal(const Eigen::Matrix4cd& u, const std::string& name) {
+    const Eigen::Matrix4cd d = diagonalForTwoCx(u);
+    EXPECT_LT((d - Eigen::Matrix4cd(d.diagonal().asDiagonal())).cwiseAbs().maxCoeff(), 1e-15) << name;
+    EXPECT_LT((d * d.adjoint() - Eigen::Matrix4cd::Identity()).cwiseAbs().maxCoeff(), 1e-14) << name;
+    // twoCxDecomposition reconstructs its circuit and reports the max entry error
+    EXPECT_LT(twoCxDecomposition(d.adjoint() * u).error, 1e-12) << name;
+}
+
+Eigen::Matrix4cd controlled(const Eigen::Matrix2cd& g) {  // control q0, target q1
+    Eigen::Matrix4cd m = Eigen::Matrix4cd::Identity();
+    m(1, 1) = g(0, 0); m(1, 3) = g(0, 1); m(3, 1) = g(1, 0); m(3, 3) = g(1, 1);
+    return m;
+}
+
+}  // namespace
+
+TEST(CorrectnessTwoQubit, TwoCxUpToDiagonal) {
+    Eigen::Matrix4cd swap = Eigen::Matrix4cd::Zero();
+    swap(0, 0) = swap(1, 2) = swap(2, 1) = swap(3, 3) = 1.0;
+    Eigen::Matrix4cd iswap = swap;
+    iswap(1, 2) = iswap(2, 1) = cd(0.0, 1.0);
+    Eigen::Matrix2cd x, h, rz;
+    x << 0, 1, 1, 0;
+    h << 1, 1, 1, -1;
+    h /= std::sqrt(2.0);
+    rz << std::exp(cd(0, -0.2)), 0, 0, std::exp(cd(0, 0.2));
+
+    expect_two_cx_up_to_diagonal(Eigen::Matrix4cd::Identity(), "identity");
+    expect_two_cx_up_to_diagonal(swap, "SWAP");
+    expect_two_cx_up_to_diagonal(iswap, "iSWAP");
+    expect_two_cx_up_to_diagonal(controlled(x), "CNOT");
+    expect_two_cx_up_to_diagonal(controlled(h), "CH");
+    expect_two_cx_up_to_diagonal(controlled(rz), "CRZ");
+    expect_two_cx_up_to_diagonal(Eigen::Matrix4cd(Eigen::Vector4cd(1, 1, 1, -1).asDiagonal()), "CZ");
+    expect_two_cx_up_to_diagonal(kron(random_unitary(2), random_unitary(2)), "local");
+    for (int k = 0; k < 300; ++k) {
+        expect_two_cx_up_to_diagonal(random_unitary(4), "random " + std::to_string(k));
     }
 }
 

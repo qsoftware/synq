@@ -7,7 +7,7 @@ SynQ builds an abstract syntax tree for the decomposition and emits OpenQASM 3 t
 | Function | Method |
 |---|---|
 | state preparation | uniformly controlled RY/RZ rotations (Möttönen et al.) |
-| unitary | cosine-sine decomposition + quantum Shannon decomposition with optimization A.1 of Shende, Bullock and Markov (the middle RY multiplexor uses CZs and its last CZ is absorbed into the next block); 2-qubit blocks use the 3-CNOT decomposition |
+| unitary | cosine-sine + quantum Shannon decomposition with optimizations A.1 and A.2 of Shende, Bullock and Markov: (23/48)·4ⁿ − (3/2)·2ⁿ + 4/3 two-qubit gates (20, 100, 444, 1868 for n = 3…6) |
 | diagonal gate | recursive uniformly controlled RZ rotations |
 
 The circuits use the Qiskit (little-endian) qubit order: qubit 0 is the least significant bit. They implement the target exactly, including the global phase.

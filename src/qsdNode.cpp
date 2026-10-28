@@ -18,7 +18,7 @@ qsdNode::qsdNode(const Eigen::MatrixXcd& gate1, const Eigen::MatrixXcd& gate2) :
 }
 
 std::unique_ptr<unitaryGateNode> qsdNode::createUnitary(const Eigen::MatrixXcd& matrix) {
-    return std::make_unique<unitaryGateNode>(matrix);
+    return std::make_unique<unitaryGateNode>(matrix, false);
 }
 
 std::unique_ptr<ucrzNode> qsdNode::createUcrz(const std::vector<double>& angles) {

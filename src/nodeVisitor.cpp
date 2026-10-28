@@ -277,18 +277,21 @@ void qasmVisitor::visit(twoQubitGateNode &node) {
     node.gate_c->accept(*this);
     node.gate_d->accept(*this);
 
-    emit_two_qubit(CX, 0, 1);
-
-    node.rz_theta->accept(*this);
-    node.ry1_theta->accept(*this);
-
-    emit_two_qubit(CX, 1, 0);
-
-    node.ry2_theta->accept(*this);
-
-    emit_two_qubit(CX, 0, 1);
+    if (node.two_cx) {
+        // A.2: CX q0->q1; Rz (q1), Ry (q0); CX q0->q1
+        emit_two_qubit(CX, 0, 1);
+        node.rz_theta->accept(*this);
+        node.ry1_theta->accept(*this);
+        emit_two_qubit(CX, 0, 1);
+    } else {
+        emit_two_qubit(CX, 0, 1);
+        node.rz_theta->accept(*this);
+        node.ry1_theta->accept(*this);
+        emit_two_qubit(CX, 1, 0);
+        node.ry2_theta->accept(*this);
+        emit_two_qubit(CX, 0, 1);
+    }
 
     node.gate_a->accept(*this);
     node.gate_b->accept(*this);
-
 }

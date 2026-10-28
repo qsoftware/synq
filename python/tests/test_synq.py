@@ -181,9 +181,9 @@ def test_gate_lists_validate_inputs():
         synq.diagonal_gates([1.0, 0.5])
 
 
-@pytest.mark.parametrize("n,expected", [(2, 3), (3, 23), (4, 115), (5, 507)])
+@pytest.mark.parametrize("n,expected", [(2, 3), (3, 20), (4, 100), (5, 444)])
 def test_unitary_two_qubit_gate_count(n, expected):
-    """Optimization A.1 saves one CNOT per CSD step: (9/16) 4^n - (3/2) 2^n - (4^(n-2) - 1)/3."""
+    """Optimizations A.1 and A.2: (23/48) 4^n - (3/2) 2^n + 4/3 two-qubit gates for n >= 3."""
     types, _, _, _ = synq.unitary_gates(random_unitary(2**n, rng))
     assert np.count_nonzero(types >= synq.CX) == expected
 
