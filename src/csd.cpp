@@ -4,6 +4,8 @@
 
 #include "../include/csd.h"
 #include<iostream>
+#include <stdexcept>
+#include <string>
 
 csd_result csd(const Eigen::MatrixXcd& unitary, Eigen::Index p, Eigen::Index q) {
     auto m = unitary.rows();
@@ -51,7 +53,13 @@ csd_result csd(const Eigen::MatrixXcd& unitary, Eigen::Index p, Eigen::Index q) 
         V2T.data(), ldv2t // x22, ldx22
     );
 
-    if (info != 0) std::cerr << "LAPACKE_cuncsd: " << info << std::endl;
+    if (info != 0) {
+        delete[] X11;
+        delete[] X12;
+        delete[] X21;
+        delete[] X22;
+        throw std::runtime_error("LAPACKE_zuncsd failed with info = " + std::to_string(info));
+    }
 
     const Eigen::Map<Eigen::MatrixXcd> out_U1(reinterpret_cast<std::complex<double>*> (U1.data()), p, p);
     const Eigen::Map<Eigen::MatrixXcd> out_U2(reinterpret_cast<std::complex<double>*> (U2.data()), m-p, m-p);
@@ -65,10 +73,10 @@ csd_result csd(const Eigen::MatrixXcd& unitary, Eigen::Index p, Eigen::Index q) 
     out.V1T = out_V1T;
     out.V2T = out_V2T;
     out.theta = out_theta;
-    delete X11;
-    delete X12;
-    delete X21;
-    delete X22;
+    delete[] X11;
+    delete[] X12;
+    delete[] X21;
+    delete[] X22;
 
     return out;
 }
