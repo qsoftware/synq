@@ -1,13 +1,3 @@
 # Normalize line endings: text files are stored with LF in the repository and
 # checked out with the platform's native ending (CRLF on Windows, LF elsewhere).
 * text=auto
-
-# Files that must keep a specific ending on every platform
-*.sh   text eol=lf
-*.bat  text eol=crlf
-*.cmd  text eol=crlf
-
-# Binary files
-*.png  binary
-*.jpg  binary
-*.pdf  binary
