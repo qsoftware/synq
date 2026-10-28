@@ -90,6 +90,10 @@ add_library(synq
         include/synthesisOptions.h
         src/hNode.cpp
         include/hNode.h
+        src/zxz.cpp
+        include/zxz.h
+        src/zxzNode.cpp
+        include/zxzNode.h
 )
 
 # The static library is linked into the Python extension, so it must be PIC.

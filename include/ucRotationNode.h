@@ -40,6 +40,20 @@ public:
      */
     bool drop_last = false;
 
+    /**
+     * @brief Emit the gates of this RZ multiplexor in reverse order, so that it starts
+     * with its outer CNOT. A multiplexed RZ is diagonal and its circuit has only RZ and
+     * CNOT gates, which are symmetric matrices, so the reversed circuit (the transpose)
+     * implements the same operator. Only meaningful for a "first" RZ node.
+     */
+    bool mirror = false;
+
+    /**
+     * @brief Omit the first two-qubit gate of a mirrored node (Block-ZXZ); the caller
+     * absorbs the omitted CNOT elsewhere.
+     */
+    bool drop_first = false;
+
     /** @brief Sets use_cz on this node and all its UCR sub-nodes. */
     void setUseCz(bool value);
     

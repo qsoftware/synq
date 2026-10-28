@@ -22,6 +22,7 @@
 #include "qsdNode.h"
 #include "unitaryGateNode.h"
 #include "hNode.h"
+#include "zxzNode.h"
 class diagonalGateNode;
 class oneQubitDiagonalGateNode;
 
@@ -39,6 +40,7 @@ public:
     virtual void visit(qspUcrNode &node) = 0;
     virtual void visit(csdNode &node) = 0;
     virtual void visit(qsdNode &node) = 0;
+    virtual void visit(zxzNode &node) = 0;
     virtual void visit(unitaryGateNode &node) = 0;
     virtual void visit(twoQubitGateNode &node) = 0;
     virtual void visit(unitaryOneQubitGateNode &node) = 0;
@@ -135,6 +137,7 @@ public:
     void visit(qspUcrNode &node) override;
     void visit(csdNode &node) override;
     void visit(qsdNode &node) override;
+    void visit(zxzNode &node) override;
     void visit(unitaryGateNode &node) override;
     void visit(twoQubitGateNode &node) override;
     void visit(unitaryOneQubitGateNode &node) override;
@@ -144,6 +147,8 @@ public:
 private:
     /** Reversal inherited from the parent UCR node (replaces modifying the tree). */
     bool reverse_context = false;
+    /** Inside a mirrored RZ multiplexor: every RZ node emits its gates in reverse order. */
+    bool mirror_context = false;
 
     void emit_rotation(gateType type, int qubit, double angle);
     void emit_two_qubit(gateType type, int control, int target);

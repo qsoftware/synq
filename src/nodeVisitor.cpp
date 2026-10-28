@@ -86,12 +86,28 @@ void qasmVisitor::visit(firstUcrzNode &node) {
 
     // A "first" node starts a multiplexor: its children have no inherited reversal.
     const bool saved_context = reverse_context;
+    const bool saved_mirror = mirror_context;
     reverse_context = false;
-    node.gate1->accept(*this);
-    emit_two_qubit(node.use_cz ? CZ : CX, control, target);
-    node.gate2->accept(*this);
-    emit_two_qubit(node.use_cz ? CZ : CX, control, target);
+    mirror_context = node.mirror;
+    const gateType two_qubit = node.use_cz ? CZ : CX;
+    if (node.mirror) {
+        // the same gates in reverse order (see UCRotationNode::mirror)
+        if (!node.drop_first) {  // Block-ZXZ: the caller absorbed this gate
+            emit_two_qubit(two_qubit, control, target);
+        }
+        node.gate2->accept(*this);
+        emit_two_qubit(two_qubit, control, target);
+        node.gate1->accept(*this);
+    } else {
+        node.gate1->accept(*this);
+        emit_two_qubit(two_qubit, control, target);
+        node.gate2->accept(*this);
+        if (!node.drop_last) {  // Block-ZXZ: the caller absorbed this gate
+            emit_two_qubit(two_qubit, control, target);
+        }
+    }
     reverse_context = saved_context;
+    mirror_context = saved_mirror;
 }
 
 
@@ -119,9 +135,15 @@ void qasmVisitor::visit(ucrzNode &node) {
     IASTnode& second = reversed ? *node.gate1 : *node.gate2;
     const bool saved_context = reverse_context;
     reverse_context = reversed;  // the children's flags are relative to this node
-    first.accept(*this);
-    emit_two_qubit(node.use_cz ? CZ : CX, control, target);
-    second.accept(*this);
+    if (mirror_context) {  // inside a mirrored multiplexor: the same gates in reverse order
+        second.accept(*this);
+        emit_two_qubit(node.use_cz ? CZ : CX, control, target);
+        first.accept(*this);
+    } else {
+        first.accept(*this);
+        emit_two_qubit(node.use_cz ? CZ : CX, control, target);
+        second.accept(*this);
+    }
     reverse_context = saved_context;
 }
 
@@ -252,6 +274,16 @@ void qasmVisitor::visit(qsdNode &node) {
     if (node.gate_v) {
         node.gate_v->accept(*this);
     }
+}
+
+void qasmVisitor::visit(zxzNode &node) {
+    node.gate_w_c->accept(*this);
+    node.ucrz_c->accept(*this);
+    node.h1->accept(*this);
+    node.middle->accept(*this);
+    node.h2->accept(*this);
+    node.ucrz_a->accept(*this);
+    node.gate_v_a->accept(*this);
 }
 
 void qasmVisitor::visit(diagonalGateNode &node) {

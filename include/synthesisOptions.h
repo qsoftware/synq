@@ -9,6 +9,11 @@
 enum class unitaryDecomposition {
     /** Cosine-sine decomposition + quantum Shannon decomposition (Shende, Bullock, Markov 2006). */
     QSD,
+    /**
+     * Block-ZXZ decomposition (Krol and Al-Ars, 2024): one CNOT less per step than
+     * the QSD with optimization A.1 (19, 95, 423 CNOTs for 3, 4, 5 qubits with A.2).
+     */
+    BlockZXZ,
 };
 
 /**

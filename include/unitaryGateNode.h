@@ -67,14 +67,15 @@ public:
      *        is synthesized later by the root's applyA2(), so that every two-qubit
      *        block is decomposed exactly once. The root sets it for its descendants
      *        when it applies A.2; after the root's constructor the tree is complete.
+     * @param method Decomposition of this node and its descendants with three or more qubits.
      */
-    explicit unitaryGateNode(const Eigen::MatrixXcd& matrix, bool optimize = true, bool defer_two_qubit = false);
+    explicit unitaryGateNode(const Eigen::MatrixXcd& matrix, bool optimize = true, bool defer_two_qubit = false,
+                             unitaryDecomposition method = unitaryDecomposition::QSD);
 
     /**
      * @brief Decomposes a unitary matrix with the given options (this node is the root).
      *
-     * Same as unitaryGateNode(matrix, options.a2). Only unitaryDecomposition::QSD is
-     * available for now.
+     * Same as unitaryGateNode(matrix, options.a2, false, options.method).
      */
     unitaryGateNode(const Eigen::MatrixXcd& matrix, const synthesisOptions& options);
     void accept(nodeVisitor &visitor) override;
@@ -87,6 +88,7 @@ private:
     Eigen::MatrixXcd data;
     /** Children of this node defer their two-qubit blocks to the root's applyA2(). */
     bool defer_children = false;
+    unitaryDecomposition method = unitaryDecomposition::QSD;
     static int index;
     int name;
 
@@ -94,5 +96,6 @@ private:
     void applyA2();
     void collectTwoQubitLeaves(std::vector<unitaryGateNode*>& leaves);
     std::unique_ptr<IASTnode> createCSD(const Eigen::MatrixXcd& matrix);
+    std::unique_ptr<IASTnode> createZXZ(const Eigen::MatrixXcd& matrix);
     std::unique_ptr<IASTnode> createTwoQubitUnitary(const Eigen::MatrixXcd& matrix);
 };
