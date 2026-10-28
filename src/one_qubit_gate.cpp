@@ -10,26 +10,27 @@
 #include <complex>
 
 zyz_result OneQubit::zyz_decomposition(Eigen::Matrix2cd uMatrix) {
+    /*
+     * U = e^(i alpha) V, with V in SU(2):
+     *   V = [ e^{-i(beta+delta)/2} cos(gamma/2)   -e^{-i(beta-delta)/2} sin(gamma/2) ]
+     *       [ e^{ i(beta-delta)/2} sin(gamma/2)    e^{ i(beta+delta)/2} cos(gamma/2) ]
+     * so (beta+delta)/2 = arg(V11) and (beta-delta)/2 = arg(V10).
+     *
+     * The previous implementation took the phases of U00, U01 and U10, which are
+     * undefined when an entry is zero (identity, X, diagonal gates, ...).
+     * Here, when V11 (or V10) is zero, std::arg returns 0 and the corresponding
+     * combination of angles is irrelevant, so the result is still exact.
+     */
+    const std::complex<double> det = uMatrix.determinant();
+    const double alpha = std::arg(det) / 2.0;
+    const Eigen::Matrix2cd v = uMatrix * std::exp(std::complex<double>(0.0, -alpha));
 
-    double const x00 = arg(uMatrix(0, 0));
-    double const x01 = arg(uMatrix(0, 1)) + M_PI;
-    double const x10 = arg(uMatrix(1, 0));
-
-    Eigen::Matrix3d A;
-    A << 1.0, -1.0/2, -1.0/2,
-         1.0, -1.0/2,  1.0/2,
-         1.0,  1.0/2, -1.0/2;
-
-    Eigen::Vector3d b;
-    b << x00, x01, x10;
-
-    Eigen::Vector3d angles = A.lu().solve(b);
-    double const gamma =  acos(abs(uMatrix(0, 0))) * 2;
-    double const alpha =  angles(0);
-    double const beta =  angles(1);
-    double const delta =  angles(2);
+    const double gamma = 2.0 * std::atan2(std::abs(v(1, 0)), std::abs(v(0, 0)));
+    const double half_sum = std::arg(v(1, 1));   // (beta + delta) / 2
+    const double half_diff = std::arg(v(1, 0));  // (beta - delta) / 2
+    const double beta = half_sum + half_diff;
+    const double delta = half_sum - half_diff;
     return {alpha, beta, gamma, delta};
-
 }
 
 Eigen::Matrix2cd OneQubit::h_matrix() {
