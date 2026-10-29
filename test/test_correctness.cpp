@@ -698,7 +698,7 @@ std::vector<std::pair<std::string, Eigen::MatrixXcd>> structured_unitaries(Eigen
 }  // namespace
 
 TEST(CorrectnessZxz, BlockDecomposition) {
-    for (Eigen::Index dim = 2; dim <= 64; dim *= 2) {
+    for (Eigen::Index dim = 2; dim <= 128; dim *= 2) {
         auto cases = structured_unitaries(dim);
         cases.emplace_back("random", random_unitary(dim));
         for (const auto& [name, u] : cases) {
@@ -771,6 +771,14 @@ TEST(CorrectnessZxz, OnlyRzRyCxAndH) {
         h += gate.type == qasmVisitor::H;
     }
     EXPECT_EQ(h, 2u + 4u * 2u);  // two per decomposition step (4 qubits, then four of 3 qubits)
+}
+
+TEST(CorrectnessZxz, ManyRandomUnitaries) {
+    // a rare failure of the block decomposition (SVDs) shows up as an inexact circuit
+    for (int k = 0; k < 30; ++k) {
+        const Eigen::MatrixXcd u = random_unitary(32);
+        EXPECT_LT((operator_of(synthesize_zxz(u), 32) - u).cwiseAbs().maxCoeff(), 1e-11) << k;
+    }
 }
 
 TEST(CorrectnessZxz, GateListAndRepeatedVisits) {
