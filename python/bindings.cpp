@@ -24,6 +24,7 @@
 #include "../include/nodeVisitor.h"
 #include "../include/qspUcrNode.h"
 #include "../include/unitaryGateNode.h"
+#include "../include/synthesisOptions.h"
 
 namespace py = pybind11;
 
@@ -39,7 +40,7 @@ int num_qubits_from_size(std::size_t size, const char* what) {
 /**
  * Converts the gates recorded by a qasmVisitor into numpy arrays:
  * (types uint8[N], qubits int32[N, 2], angles float64[N], global_phase float).
- * Gate types: 0 rz, 1 ry, 2 p, 3 cx, 4 cz. Single-qubit gates have qubits[k, 1] == -1;
+ * Gate types: 0 rz, 1 ry, 2 p, 3 cx, 4 cz, 5 h. Single-qubit gates have qubits[k, 1] == -1;
  * two-qubit gates store (control, target).
  */
 py::tuple to_arrays(const qasmVisitor& visitor) {
@@ -96,17 +97,30 @@ py::tuple state_preparation_gates(const std::vector<std::complex<double>>& state
     return to_arrays(visitor);
 }
 
-std::string unitary(const Eigen::MatrixXcd& matrix) {
+/** "qsd" (default) or "zxz" (Block-ZXZ). */
+synthesisOptions unitary_options(const std::string& method) {
+    synthesisOptions options;
+    if (method == "qsd") {
+        options.method = unitaryDecomposition::QSD;
+    } else if (method == "zxz") {
+        options.method = unitaryDecomposition::BlockZXZ;
+    } else {
+        throw std::invalid_argument("method must be 'qsd' or 'zxz', got '" + method + "'");
+    }
+    return options;
+}
+
+std::string unitary(const Eigen::MatrixXcd& matrix, const std::string& method) {
     const int n = num_qubits_from_size(static_cast<std::size_t>(matrix.rows()), "matrix");
-    unitaryGateNode node(matrix);  // validates shape and unitarity
+    unitaryGateNode node(matrix, unitary_options(method));  // validates shape and unitarity
     qasmVisitor visitor(n);
     node.accept(visitor);
     return visitor.qasm_code;
 }
 
-py::tuple unitary_gates(const Eigen::MatrixXcd& matrix) {
+py::tuple unitary_gates(const Eigen::MatrixXcd& matrix, const std::string& method) {
     const int n = num_qubits_from_size(static_cast<std::size_t>(matrix.rows()), "matrix");
-    unitaryGateNode node(matrix);  // validates shape and unitarity
+    unitaryGateNode node(matrix, unitary_options(method));  // validates shape and unitarity
     qasmVisitor visitor(n, false);
     node.accept(visitor);
     return to_arrays(visitor);
@@ -137,18 +151,19 @@ PYBIND11_MODULE(_synq, m) {
 
     m.def("state_preparation", &state_preparation, py::arg("state"),
           "Circuit (OpenQASM 3) that prepares the normalized state vector `state` from |0...0>.");
-    m.def("unitary", &unitary, py::arg("matrix"),
-          "Circuit (OpenQASM 3) implementing the 2^n x 2^n unitary `matrix` (CSD/QSD).");
+    m.def("unitary", &unitary, py::arg("matrix"), py::arg("method") = "qsd",
+          "Circuit (OpenQASM 3) implementing the 2^n x 2^n unitary `matrix`. `method` is "
+          "'qsd' (cosine-sine + quantum Shannon decomposition, default) or 'zxz' (Block-ZXZ).");
     m.def("diagonal", &diagonal, py::arg("diagonal"),
           "Circuit (OpenQASM 3) implementing diag(`diagonal`); entries must have modulus 1.");
 
     const char* gates_doc =
         "Same as the QASM function, but returns the gates as numpy arrays: "
         "(types uint8[N], qubits int32[N, 2], angles float64[N], global_phase). "
-        "Types: 0 rz, 1 ry, 2 p, 3 cx, 4 cz; single-qubit gates have qubits[k, 1] == -1, "
+        "Types: 0 rz, 1 ry, 2 p, 3 cx, 4 cz, 5 h; single-qubit gates have qubits[k, 1] == -1, "
         "two-qubit gates store (control, target).";
     m.def("state_preparation_gates", &state_preparation_gates, py::arg("state"), gates_doc);
-    m.def("unitary_gates", &unitary_gates, py::arg("matrix"), gates_doc);
+    m.def("unitary_gates", &unitary_gates, py::arg("matrix"), py::arg("method") = "qsd", gates_doc);
     m.def("diagonal_gates", &diagonal_gates, py::arg("diagonal"), gates_doc);
 
 #ifdef SYNQ_VERSION

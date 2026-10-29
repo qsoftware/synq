@@ -10,12 +10,14 @@
 #include "../include/ryNode.h"
 #include "../include/rzNode.h"
 #include "../include/qsdNode.h"
+#include "../include/zxzNode.h"
 #include <stdexcept>
 #include <cmath>
 
 int unitaryGateNode::index = 0;
 
-unitaryGateNode::unitaryGateNode(const Eigen::MatrixXcd& matrix, bool optimize, bool defer_two_qubit) : data(matrix) {
+unitaryGateNode::unitaryGateNode(const Eigen::MatrixXcd& matrix, bool optimize, bool defer_two_qubit,
+                                 unitaryDecomposition method, bool check_unitary) : data(matrix), method(method) {
 
     if (matrix.size() == 0 || matrix.rows() != matrix.cols()) {
         throw std::invalid_argument("Matrix must be square and non-empty");
@@ -25,7 +27,7 @@ unitaryGateNode::unitaryGateNode(const Eigen::MatrixXcd& matrix, bool optimize, 
         throw std::invalid_argument("Matrix dimension must be a power of 2 (e.g., 2, 4, 8, 16...)");
     }
 
-    if ((matrix * matrix.adjoint()).isIdentity(1e-10) == false) {
+    if (check_unitary && !(matrix * matrix.adjoint()).isIdentity(1e-10)) {
         throw std::invalid_argument("Matrix must be unitary");
     }
 
@@ -43,17 +45,27 @@ unitaryGateNode::unitaryGateNode(const Eigen::MatrixXcd& matrix, bool optimize, 
     }
 }
 
+unitaryGateNode::unitaryGateNode(const Eigen::MatrixXcd& matrix, const synthesisOptions& options)
+    : unitaryGateNode(matrix, options.a2, false, options.method) {
+}
+
 void unitaryGateNode::collectTwoQubitLeaves(std::vector<unitaryGateNode*>& leaves) {
-    // Same (time) order as qasmVisitor: csd -> qsd2, ucry, qsd1; qsd -> gate_w, ucrz, gate_v.
+    // Same (time) order as qasmVisitor: csd -> qsd2, ucry, qsd1; qsd -> gate_w, ucrz, gate_v;
+    // zxz -> gate_w_c, ucrz_c, h1, middle, h2, ucrz_a, gate_v_a.
     if (num_qubits == 2) {
         leaves.push_back(this);
         return;
     }
-    auto* csd_node = dynamic_cast<csdNode*>(csd.get());
-    if (csd_node == nullptr) return;
-    for (qsdNode* qsd_node : {csd_node->qsd2.get(), csd_node->qsd1.get()}) {
-        qsd_node->gate_w->collectTwoQubitLeaves(leaves);
-        qsd_node->gate_v->collectTwoQubitLeaves(leaves);
+    if (auto* csd_node = dynamic_cast<csdNode*>(csd.get())) {
+        for (qsdNode* qsd_node : {csd_node->qsd2.get(), csd_node->qsd1.get()}) {
+            qsd_node->gate_w->collectTwoQubitLeaves(leaves);
+            qsd_node->gate_v->collectTwoQubitLeaves(leaves);
+        }
+    } else if (auto* zxz_node = dynamic_cast<zxzNode*>(csd.get())) {
+        zxz_node->gate_w_c->collectTwoQubitLeaves(leaves);
+        zxz_node->middle->gate_w->collectTwoQubitLeaves(leaves);
+        zxz_node->middle->gate_v->collectTwoQubitLeaves(leaves);
+        zxz_node->gate_v_a->collectTwoQubitLeaves(leaves);
     }
 }
 
@@ -62,8 +74,9 @@ void unitaryGateNode::applyA2() {
      * Optimization A.2 (Shende, Bullock, Markov 2006): every two-qubit block except
      * the last is implemented up to a diagonal D with two CNOTs, and D is moved
      * forward into the next block (in time order). Between two consecutive blocks
-     * there are only multiplexed rotations, and the CZs of A.1, whose targets are
-     * qubits >= 2. They are diagonal in qubits 0 and 1, so D commutes with them.
+     * there are only multiplexed rotations, the CZs of A.1 and the H gates of the
+     * Block-ZXZ, whose targets are qubits >= 2. They are diagonal in qubits 0 and 1,
+     * so D commutes with them.
      */
     std::vector<unitaryGateNode*> leaves;
     collectTwoQubitLeaves(leaves);
@@ -80,7 +93,7 @@ void unitaryGateNode::applyA2() {
 
 void unitaryGateNode::init(){
     if (num_qubits > 2) {
-        csd = createCSD(data);
+        csd = method == unitaryDecomposition::BlockZXZ ? createZXZ(data) : createCSD(data);
     } else if (num_qubits == 2) {
         csd = createTwoQubitUnitary(data);
     } else {
@@ -138,6 +151,10 @@ return_type unitaryOneQubitGateNode::get_data() {
 
 std::unique_ptr<IASTnode> unitaryGateNode::createCSD(const Eigen::MatrixXcd& matrix) {
     return std::make_unique<csdNode>(matrix, defer_children);
+}
+
+std::unique_ptr<IASTnode> unitaryGateNode::createZXZ(const Eigen::MatrixXcd& matrix) {
+    return std::make_unique<zxzNode>(matrix, defer_children);
 }
 
 std::unique_ptr<IASTnode> unitaryGateNode::createBaseUnitary(const Eigen::MatrixXcd& matrix, int position) {

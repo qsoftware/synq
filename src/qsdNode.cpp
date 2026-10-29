@@ -8,8 +8,9 @@
 #include "../include/ucrzNode.h"
 
 
-qsdNode::qsdNode(const Eigen::MatrixXcd& gate1, const Eigen::MatrixXcd& gate2, bool defer_two_qubit)
-    : m_defer_two_qubit(defer_two_qubit), m_gate1(gate1), m_gate2(gate2) {
+qsdNode::qsdNode(const Eigen::MatrixXcd& gate1, const Eigen::MatrixXcd& gate2, bool defer_two_qubit,
+                 unitaryDecomposition method)
+    : m_defer_two_qubit(defer_two_qubit), m_method(method), m_gate1(gate1), m_gate2(gate2) {
     qsd_result result = qsd(gate1, gate2);
     gate_v = createUnitary(result.gate_v);
     gate_w = createUnitary(result.gate_w);
@@ -19,7 +20,8 @@ qsdNode::qsdNode(const Eigen::MatrixXcd& gate1, const Eigen::MatrixXcd& gate2, b
 }
 
 std::unique_ptr<unitaryGateNode> qsdNode::createUnitary(const Eigen::MatrixXcd& matrix) {
-    return std::make_unique<unitaryGateNode>(matrix, false, m_defer_two_qubit);
+    // unitary by construction: only the root checks its input
+    return std::make_unique<unitaryGateNode>(matrix, false, m_defer_two_qubit, m_method, false);
 }
 
 std::unique_ptr<ucrzNode> qsdNode::createUcrz(const std::vector<double>& angles) {
@@ -32,4 +34,4 @@ void qsdNode::accept(nodeVisitor &visitor) {
 
 return_type qsdNode::get_data() {
     return std::make_pair(m_gate1, m_gate2);
-}
+}

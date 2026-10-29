@@ -33,7 +33,8 @@ public:
      * @param gate1 First unitary matrix.
      * @param gate2 Second unitary matrix.
      */
-    explicit qsdNode(const Eigen::MatrixXcd& gate1, const Eigen::MatrixXcd& gate2, bool defer_two_qubit = false);
+    explicit qsdNode(const Eigen::MatrixXcd& gate1, const Eigen::MatrixXcd& gate2, bool defer_two_qubit = false,
+                     unitaryDecomposition method = unitaryDecomposition::QSD);
     
     /**
     * @brief Accept a visitor according to the Visitor pattern.
@@ -73,6 +74,8 @@ private:
 
     /** Passed to the unitary children (see unitaryGateNode). */
     bool m_defer_two_qubit = false;
+    /** Decomposition of the unitary children with three or more qubits. */
+    unitaryDecomposition m_method = unitaryDecomposition::QSD;
     /**
      * @brief Factory method to create a unique pointer to an Ucrz node.
      *
@@ -89,4 +92,4 @@ private:
     * @brief Second unitary base matrix for the decomposition
     */ 
     Eigen::MatrixXcd m_gate2;
-};
+};

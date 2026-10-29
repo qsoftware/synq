@@ -8,6 +8,7 @@
 #include <memory>
 #include <vector>
 #include "one_qubit_gate.h"
+#include "synthesisOptions.h"
 
 class csdNode;
 
@@ -66,8 +67,20 @@ public:
      *        is synthesized later by the root's applyA2(), so that every two-qubit
      *        block is decomposed exactly once. The root sets it for its descendants
      *        when it applies A.2; after the root's constructor the tree is complete.
+     * @param method Decomposition of this node and its descendants with three or more qubits.
+     * @param check_unitary Verify that `matrix` is unitary (O(d^3)). Internal use: the
+     *        nodes of the decomposition pass false, because their matrices are unitary
+     *        by construction; only the root checks its input.
      */
-    explicit unitaryGateNode(const Eigen::MatrixXcd& matrix, bool optimize = true, bool defer_two_qubit = false);
+    explicit unitaryGateNode(const Eigen::MatrixXcd& matrix, bool optimize = true, bool defer_two_qubit = false,
+                             unitaryDecomposition method = unitaryDecomposition::QSD, bool check_unitary = true);
+
+    /**
+     * @brief Decomposes a unitary matrix with the given options (this node is the root).
+     *
+     * Same as unitaryGateNode(matrix, options.a2, false, options.method).
+     */
+    unitaryGateNode(const Eigen::MatrixXcd& matrix, const synthesisOptions& options);
     void accept(nodeVisitor &visitor) override;
     return_type get_data() override;
     std::unique_ptr<IASTnode> csd;
@@ -78,6 +91,7 @@ private:
     Eigen::MatrixXcd data;
     /** Children of this node defer their two-qubit blocks to the root's applyA2(). */
     bool defer_children = false;
+    unitaryDecomposition method = unitaryDecomposition::QSD;
     static int index;
     int name;
 
@@ -85,5 +99,6 @@ private:
     void applyA2();
     void collectTwoQubitLeaves(std::vector<unitaryGateNode*>& leaves);
     std::unique_ptr<IASTnode> createCSD(const Eigen::MatrixXcd& matrix);
+    std::unique_ptr<IASTnode> createZXZ(const Eigen::MatrixXcd& matrix);
     std::unique_ptr<IASTnode> createTwoQubitUnitary(const Eigen::MatrixXcd& matrix);
 };

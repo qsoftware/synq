@@ -5,6 +5,12 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 project(synq VERSION 0.0.1)
 
+# Eigen and GoogleTest templates exceed the default number of sections of an
+# MSVC object file in the larger test files (error C1128).
+if (MSVC)
+    add_compile_options(/bigobj)
+endif()
+
 
 include(FetchContent)
 
@@ -87,6 +93,13 @@ add_library(synq
         include/twoQubitsUnitary.h
         src/diagonalGateNode.cpp
         include/diagonalGateNode.h
+        include/synthesisOptions.h
+        src/hNode.cpp
+        include/hNode.h
+        src/zxz.cpp
+        include/zxz.h
+        src/zxzNode.cpp
+        include/zxzNode.h
 )
 
 # The static library is linked into the Python extension, so it must be PIC.
